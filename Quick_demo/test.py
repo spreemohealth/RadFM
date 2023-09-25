@@ -98,15 +98,16 @@ def main():
     model = MultiLLaMAForCausalLM(
         lang_model_path='./Language_files', ### Build up model based on LLaMa-13B config
     )
-    ckpt = torch.load('./pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
+    ckpt = torch.load('./Language_files/pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
     model.load_state_dict(ckpt)
+
     print("Finish loading model")
     
     model = model.to('cuda')
     model.eval() 
     with torch.no_grad():
         lang_x = text_tokenizer(
-                text, max_length=2048, truncation=True, return_tensors="pt"
+                text, max_length=512, truncation=True, return_tensors="pt"
         )['input_ids'].to('cuda')
         
         vision_x = vision_x.to('cuda')

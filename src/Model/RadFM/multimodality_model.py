@@ -13,6 +13,7 @@ class MultiLLaMAForCausalLM(nn.Module):
         super(MultiLLaMAForCausalLM, self).__init__()  
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
+            
         )
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()

@@ -12,13 +12,25 @@ import numpy as np
 class MultiLLaMAForCausalLM(nn.Module):
     def __init__(self, lang_model_path):  
         super(MultiLLaMAForCausalLM, self).__init__()  
-        try:
-            self.lang_model = LlamaForCausalLM.from_pretrained(
-                lang_model_path,
-            )
-        except:
-            config = AutoConfig.from_pretrained(lang_model_path)
-            self.lang_model = LlamaForCausalLM(config)
+        # try:
+        self.lang_model = LlamaForCausalLM.from_pretrained(
+            lang_model_path,
+            load_in_8bit=True, 
+            device_map='auto',
+            torch_dtype=torch.float16,
+            max_sequence_length=512
+        )
+        # except:
+        #     print('except')
+        #     config = AutoConfig.from_pretrained(lang_model_path)
+        #     print(config)
+        #     config["LlamaConfig"]["max_sequence_length"] = 512
+        #     config["LlamaConfig"]["load_in_8bit"] = True
+        #     self.lang_model = LlamaForCausalLM(config,
+                # load_in_8bit=True, 
+                # device_map='auto',
+                # torch_dtype=torch.float16
+                                              # )
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
         # self.lang_model.requires_grad_(False)

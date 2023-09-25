@@ -40,7 +40,7 @@ class TrainingArguments(transformers.TrainingArguments):
     remove_unused_columns: bool = field(default = False)
     batch_size_2D: int = field(default = 4)
     batch_size_3D: int = field(default = 1)
-    output_dir: Optional[str] = field(default="/home/cs/leijiayu/wuchaoyi/multi_modal/src/Results/BLIP_overfit/")
+    output_dir: Optional[str] = field(default="/home/jovyan/ishita/RadFM")
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
 
