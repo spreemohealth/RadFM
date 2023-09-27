@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: radfm
+  namespace: idaga1
+spec:
+      nodeName: rkegpu03
+      volumes:
+        - name: shared-memory-patch
+          emptyDir:
+            medium: Memory
+        - name: imaging-data
+          hostPath:
+            path: /mnt/ai_s3_synced/imaging
+            type: Directory
+        - name: teamblackhole
+          hostPath:
+            path: /mnt/team_blackhole
+            type: Directory
+        - name: teams3synced
+          hostPath:
+            path: /mnt/team_s3_synced
+            type: Directory
+  # template:
+  #   spec:
+      # nodeName: rkegpu02
+      containers:
+      - name: radfm
+        imagePullPolicy: Always
+        # image: coverahealth.jfrog.io/ai-development-docker/kawshik/llava:noflash
+        image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:latest
+        command: ["python", "test.py"]
+        
+        volumeMounts:
+        - name: shared-memory-patch
+          mountPath: /dev/shm
+        - name: imaging-data
+          mountPath: /mnt/imaging
+        - name: teamblackhole
+          mountPath: /mnt/team_blackhole
+        - name: teams3synced
+          mountPath: /mnt/team_s3_synced
+
+        resources:
+          limits:
+            # memory: "480000Mi"
+            nvidia.com/gpu: "1"
+          requests:
+            # memory: "409600Mi"
+            nvidia.com/gpu: "1"
+      # imagePullSecrets:
+      #   - name: ecr-cred
+      # restartPolicy: Never
+  # backoffLimit: 0

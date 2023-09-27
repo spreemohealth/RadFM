@@ -1,0 +1,15 @@
+torch==2.0.1
+transformers==4.28.0 
+torchvision==0.15.2 
+einops_exts==0.0.4 
+einops==0.6.1   
+Pillow==10.0.1
+tqdm==4.66.1
+bitsandbytes==0.41.1
+tokenizers==0.13.3
+sentencepiece==0.1.99
+pydicom==2.4.3
+streamlit==1.25.0
+open-clip-torch==2.20.0
+pydantic==2.1.1
+accelerate==0.21.0

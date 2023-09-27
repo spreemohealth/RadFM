@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamlit-demo
+  namespace: wdeng1
+spec:
+  selector:
+    matchLabels:
+      app: streamlit-demo
+  replicas: 1
+  template: 
+    metadata:
+      labels:
+        app: streamlit-demo
+    spec:
+      # volumes:
+      # - name: model-weights
+      #   hostPath:
+      #     path: /mnt/team_s3_synced/jlamare/models/hcm_100k_flanalpacagpt4xl/checkpoint-14008/
+      #     type: Directory
+      nodeName:
+        rkegpu03
+      containers:
+      - name: streamlit-demo
+        imagePullPolicy: Always
+        image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:latest
+        env:
+        - name: MODEL_TYPE
+          value: radfm
+        - name: MODEL_FOLDER
+          value: "/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin"
+        - name: WITH_IMAGE
+          value: "false"
+        resources:
+          limits:
+            nvidia.com/gpu: "1"
+          requests:
+            nvidia.com/gpu: "1"
+        ports:
+        - containerPort: 8501
+        volumeMounts:
+        - name: model-weights
+          mountPath: "/mnt/model_weights"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streamlit-demo-svc
+  namespace: wdeng1
+spec:
+  selector:
+    app: streamlit-demo
+  ports:
+    - port: 8501
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamlit-demo-ingress
+  namespace: wdeng1
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: nlp-demo.coveraai.net
+    http:
+      paths:
+      - path: /
+        pathType: ImplementationSpecific # Prefix
+        backend:
+          service:
+            name: streamlit-demo-svc
+            port:
+              number: 8501
