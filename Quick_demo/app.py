@@ -10,16 +10,16 @@ st.set_page_config(
 )
 st.title("Covera Chatbot")
 
-if os.getenv("MODEL_TYPE") == "radfm":
-    model = RadModel(os.getenv("MODEL_FOLDER"))
-else:
-    raise ValueError("MODEL_TYPE not supported")
-
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.input_image = None
     st.session_state.assistant_icon = Image.open("assets/assistant_icon.jpg")
+
+if os.getenv("MODEL_TYPE") == "radfm":
+    model = RadModel(os.getenv("MODEL_FOLDER"))
+else:
+    raise ValueError("MODEL_TYPE not supported")
 
 def assistant_response(text: str, image: Image):
     res = model(question=text, ip_image=image)
@@ -75,3 +75,8 @@ if os.getenv("WITH_IMAGE") == "true":
             st.session_state.input_image = img
     else:
         st.session_state.input_image = None
+
+# print("--------------------------------------------------------------")
+# model1 = RadModel(os.getenv("MODEL_FOLDER"))
+# res = model1("describe this image", "./view1_frontal.jpg")
+# print(f"*************   Prompt: {res['prompt']}, Answer: {res['answer']}  ***************")

@@ -7,4 +7,6 @@ services:
       # args:
       #   GITHUB_TOKEN: ${GITHUB_TOKEN}
     image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:latest
+    ports:
+      - "8501:8501"
     platform: linux/amd64

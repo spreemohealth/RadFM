@@ -12,6 +12,8 @@ from torchvision import transforms
 from PIL import Image   
 from pydicom_series import read_files
 import os
+from singleton import Singleton
+
 
 def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
     '''
@@ -42,7 +44,7 @@ def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
     
     return  text_tokenizer,image_padding_tokens  
 
-class RadModel():
+class RadModel(metaclass=Singleton):
     def __init__(self, model_path: str, device="cuda"):
 
         print("Setup tokenizer")
@@ -131,7 +133,13 @@ class RadModel():
 
     def __call__(self, question: str, ip_image):
 
-        if os.path.isdir(image):
+        image =[
+            {
+                'img_path': ip_image,
+                'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
+            }, # can add abitrary number of imgs
+        ] 
+        if os.path.isdir(ip_image):
             text,vision_x = self.combine_and_preprocess_3D(question,image,self.image_padding_tokens) 
         else:   
             text,vision_x = self.combine_and_preprocess(question,image,self.image_padding_tokens) 

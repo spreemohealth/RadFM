@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: streamlit-demo
-  namespace: wdeng1
+  namespace: idaga1
 spec:
   selector:
     matchLabels:
@@ -13,11 +13,11 @@ spec:
       labels:
         app: streamlit-demo
     spec:
-      # volumes:
-      # - name: model-weights
-      #   hostPath:
-      #     path: /mnt/team_s3_synced/jlamare/models/hcm_100k_flanalpacagpt4xl/checkpoint-14008/
-      #     type: Directory
+      volumes:
+      - name: model-weights
+        hostPath:
+          path: /mnt/team_s3_synced/msandora/RadFM/
+          type: Directory
       nodeName:
         rkegpu03
       containers:
@@ -40,13 +40,13 @@ spec:
         - containerPort: 8501
         volumeMounts:
         - name: model-weights
-          mountPath: "/mnt/model_weights"
+          mountPath: "/mnt/team_s3_synced/msandora/RadFM/"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: streamlit-demo-svc
-  namespace: wdeng1
+  namespace: idaga1
 spec:
   selector:
     app: streamlit-demo
@@ -57,7 +57,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: streamlit-demo-ingress
-  namespace: wdeng1
+  namespace: idaga1
 spec:
   ingressClassName: traefik
   rules:
