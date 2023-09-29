@@ -30,7 +30,7 @@ spec:
         - name: MODEL_FOLDER
           value: "/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin"
         - name: WITH_IMAGE
-          value: "false"
+          value: "true"
         resources:
           limits:
             nvidia.com/gpu: "1"

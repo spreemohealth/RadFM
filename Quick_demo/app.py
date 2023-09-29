@@ -69,7 +69,7 @@ if os.getenv("WITH_IMAGE") == "true":
         "Upload", type=["jpg", "png"], label_visibility="collapsed"
     )
     if uploaded_file:
-        img = Image.open(uploaded_file)
+        img = Image.open(uploaded_file).convert('RGB')
         if img is not None:
             st.image(img, width=400, clamp=True)
             st.session_state.input_image = img

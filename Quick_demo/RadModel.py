@@ -79,8 +79,8 @@ class RadModel(metaclass=Singleton):
             position = img['position']
             
             
-            image = Image.open(img_path).convert('RGB')   
-            image = transform(image)
+            # image = Image.open(img_path).convert('RGB')   
+            image = transform(img_path)
             image = image.unsqueeze(0).unsqueeze(-1) # c,w,h,d
             
             ## pre-process the img first
@@ -139,10 +139,10 @@ class RadModel(metaclass=Singleton):
                 'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
             }, # can add abitrary number of imgs
         ] 
-        if os.path.isdir(ip_image):
-            text,vision_x = self.combine_and_preprocess_3D(question,image,self.image_padding_tokens) 
-        else:   
-            text,vision_x = self.combine_and_preprocess(question,image,self.image_padding_tokens) 
+        # if os.path.isdir(ip_image):
+        #     text,vision_x = self.combine_and_preprocess_3D(question,image,self.image_padding_tokens) 
+        # else:   
+        text,vision_x = self.combine_and_preprocess(question,image,self.image_padding_tokens) 
         print("Finish loading demo case")
         
 
