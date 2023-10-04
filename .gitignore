@@ -1,0 +1,7 @@
+**/*.csv
+**/*.pyc
+**/*.bin
+data_csv/*.json
+**/.ipynb_checkpoints
+**/*.zip
+*.pyc
