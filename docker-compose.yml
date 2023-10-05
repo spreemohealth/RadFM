@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       # args:
       #   GITHUB_TOKEN: ${GITHUB_TOKEN}
-    image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:latest
+    image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:test_batch_inference
     ports:
       - "8501:8501"
     platform: linux/amd64
