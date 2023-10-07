@@ -5,7 +5,7 @@ from torch.utils.data.sampler import Sampler
 from torch.utils.data import DataLoader
 import random
 import torch
-from New_Dataset.multi_dataset import multi_dataset
+from Dataset.multi_dataset import multi_dataset
 
 def make_batch(index_list, batch_size, drop_last):  
     if drop_last:

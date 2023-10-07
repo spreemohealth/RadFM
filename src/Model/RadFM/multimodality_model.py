@@ -13,13 +13,21 @@ class MultiLLaMAForCausalLM(nn.Module):
         super(MultiLLaMAForCausalLM, self).__init__()  
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
+                                          # "/mnt/team_s3_synced/msandora/llm_models/llama2chat_converted/",
+                                          torch_dtype=torch.bfloat16,
+                                          # use_flash_attention_2=True,
+                                          # load_in_4bit=False,
+                                          # load_in_16bit=True,
+                                          # load_in_8bit=False
         )
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
         # self.lang_model.requires_grad_(False)
+        # self.hidden_dim = 8192
         self.embedding_layer = MyEmbedding()
         self.embedding_layer.weight = self.lang_model.get_input_embeddings().weight
         self.hidden_dim = 5120
+        
         self.voc_size = 32000
         
     def forward(self,lang_x, vision_x, attention_mask, labels, loss_reweight,key_words_query):

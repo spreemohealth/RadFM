@@ -14,6 +14,7 @@ from pydicom_series import read_files
 import os
 from PIL import Image
 import time
+import pdb
 
 
 def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
@@ -137,12 +138,12 @@ def main():
     question = "Describe the finding in this report?"
     image =[
             {
-                'img_path': './test_dicom/',
+                'img_path': 'view1_frontal.jpg',
                 'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
             }, # can add abitrary number of imgs
         ] 
         
-    text,vision_x = combine_and_preprocess_3D(question,image,image_padding_tokens)    
+    text,vision_x = combine_and_preprocess(question,image,image_padding_tokens)    
         
     print("Finish loading demo case")
     
@@ -150,7 +151,8 @@ def main():
     model = MultiLLaMAForCausalLM(
         lang_model_path='./Language_files', ### Build up model based on LLaMa-13B config
     )
-    ckpt = torch.load('/mnt/team_s3_synced/msandora/RadFM//pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
+    ckpt = torch.load('/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
+    pdb.trace()
     model.load_state_dict(ckpt)
     print("Finish loading model")
     
