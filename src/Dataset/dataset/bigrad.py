@@ -55,7 +55,8 @@ class BigRadDataset(Dataset):
             image = Image.open(img_path).convert('RGB')   
             image = self.transform(image)
             image = image.unsqueeze(-1) # c,w,h,d
-        except:
+        except Exception as e:
+            print('Exception: ', e)
             image = np.random.randn(3,512,512,4)
         
         answer = self.answer_list[index]
