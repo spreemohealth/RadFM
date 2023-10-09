@@ -108,7 +108,7 @@ def main():
     
     Test_dataloader = DataLoader(
             Test_dataset,
-            batch_size=1,
+            batch_size=16,
             num_workers=1,
             pin_memory=True,
             sampler=None,
@@ -141,7 +141,7 @@ def main():
             vision_x = sample["vision_x"].to('cuda')
             answer = sample['answer']
             # try:
-            generation = model.generate(lang_x.to(torch.float),vision_x.to(torch.float))
+            generation = model.generate(lang_x,vision_x.to(torch.float))
             pdb.set_trace()
 
             generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
