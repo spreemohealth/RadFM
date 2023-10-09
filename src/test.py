@@ -136,13 +136,12 @@ def main():
             belong_to = sample['belong_to']
             # img_pp = sample['img_path']
             lang_x = Test_dataset.text_tokenizer(
-                question, max_length=2048, truncation=True, return_tensors="pt"
+                question, max_length=512, truncation=True, return_tensors="pt"
             )['input_ids'].to('cuda')
             vision_x = sample["vision_x"].to('cuda')
             answer = sample['answer']
             # try:
             generation = model.generate(lang_x,vision_x.to(torch.float))
-            pdb.set_trace()
 
             generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
             print(question,answer,generated_texts)
