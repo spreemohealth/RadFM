@@ -36,7 +36,7 @@ class BigRadDataset(Dataset):
             }
     """
     def __init__(self,json_path):
-        data_info = pd.read_json(json_path)
+        data_info = pd.read_json(json_path)[:10]
         self.img_path_list = data_info['image'].tolist()
         self.answer_list = data_info['answer'].tolist()
         self.transform = transforms.Compose([                        

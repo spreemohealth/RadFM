@@ -14,7 +14,7 @@ import math
 import torchvision
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from .dataset import *
-from Dataset.dataset.bigrad import BigRadDataset
+from .dataset.bigrad import BigRadDataset
 
 
 def stack_images(images):
@@ -343,15 +343,15 @@ class MultidatasetBigrad(multi_dataset):
 
         ### closed ###
         # if self.test_split == 'diagnosis':
-        self.radnet_dataset = BigRadDataset(json_path = basepath+'radnet_test.json')
+        radnet_dataset = BigRadDataset(json_path = basepath+'radnet_test.json')
         self.dataset_reflect['radnet_dataset'] = radnet_dataset
         self.data_whole_2D = self.data_whole_2D +  [{'radnet_dataset':i} for i in range(len(radnet_dataset))]
         print('radnet_dataset loaded')
-        print(self.data_whole_2D)
+        # print(self.data_whole_2D)
         self.data_whole = self.data_whole_2D
         
-        self.mammo_dataset_bn = Binary_Dataset(csv_path = '../data_csv/mammo_balance_test.csv',  
-                                    prompt_json_file = 'Dataset/dataset/yes_no_prompt.json')
+        # self.mammo_dataset_bn = Binary_Dataset(csv_path = '../data_csv/mammo_balance_test.csv',  
+        #                             prompt_json_file = 'Dataset/dataset/yes_no_prompt.json')
 #         self.dataset_reflect['mammo_dataset_bn'] = mammo_dataset_bn
 #         self.data_whole_2D = self.data_whole_2D +  [{'mammo_dataset_bn':i} for i in range(len(mammo_dataset_bn))]
 #         print('mammo_dataset_bn loaded')
