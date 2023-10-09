@@ -142,7 +142,7 @@ def main():
             answer = sample['answer']
             # try:
             generation = model.generate(lang_x,vision_x.to(torch.float))
-            pdb.set_trace()
+            # pdb.set_trace()
 
             generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
             print(question,answer,generated_texts)
