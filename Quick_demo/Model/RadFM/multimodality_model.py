@@ -13,10 +13,13 @@ class MultiLLaMAForCausalLM(nn.Module):
     def __init__(self, lang_model_path):  
         super(MultiLLaMAForCausalLM, self).__init__()  
         try:
+            print("loading LLAMA")
             self.lang_model = LlamaForCausalLM.from_pretrained(
                 lang_model_path,
+                # torch_dtype=torch.bfloat16,
             )
         except:
+            print("LLAMA not loaded")
             config = AutoConfig.from_pretrained(lang_model_path)
             self.lang_model = LlamaForCausalLM(config)
         self.lang_model.gradient_checkpointing_enable()

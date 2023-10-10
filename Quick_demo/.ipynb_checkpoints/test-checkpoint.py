@@ -3,12 +3,19 @@ import torch.nn.functional as F
 from typing import Optional, Dict, Sequence
 from typing import List, Optional, Tuple, Union
 import transformers
+import numpy as np
 from dataclasses import dataclass, field
 from Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from torchvision import transforms
 from PIL import Image   
+from pydicom_series import read_files
+import os
+from PIL import Image
+import time
+import pdb
+
 
 def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
     '''
@@ -40,7 +47,9 @@ def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
     return  text_tokenizer,image_padding_tokens    
 
 def combine_and_preprocess(question,image_list,image_padding_tokens):
-    
+        
+        #add code for 3D
+
     transform = transforms.Compose([                        
                 transforms.RandomResizedCrop([512,512],scale=(0.8, 1.0), interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.ToTensor(),
@@ -51,7 +60,6 @@ def combine_and_preprocess(question,image_list,image_padding_tokens):
     for img in image_list:
         img_path = img['img_path']
         position = img['position']
-        
         
         
         image = Image.open(img_path).convert('RGB')   
@@ -72,6 +80,44 @@ def combine_and_preprocess(question,image_list,image_padding_tokens):
     vision_x = torch.cat(images,dim = 1).unsqueeze(0) #cat tensors and expand the batch_size dim
     text = ''.join(new_qestions) 
     return text, vision_x, 
+
+def combine_and_preprocess_3D(question,image_list,image_padding_tokens):
+    new_qestions = [_ for _ in question]
+    padding_index = 0
+
+    images = []
+    for ii in image_list:
+        img_path = ii['img_path']
+        position = ii['position']
+
+        all_series = read_files(img_path, False, False)
+        for i in all_series:
+            img = i.get_pixel_array()
+        img = (img - np.min(img))/ (np.max(img) - np.min(img))
+
+        D = img.shape[0]
+        H, W = img.shape[1], img.shape[2]
+        n_D = 4-(D%4)
+        img = np.concatenate([img, np.zeros((n_D,H,W))])
+
+        img1 = torch.transpose(torch.tensor(img), 0, 1)
+        img2 = torch.transpose(torch.tensor(img1), 1, 2)
+        img3 = torch.nn.functional.interpolate(torch.tensor(img2).unsqueeze(0).unsqueeze(0), size = (512, 512, 12))
+        img3 = img3.repeat(1,3,1,1,1)
+        images.append(img3.type(torch.float32))
+
+            ## add img placeholder to text
+        new_qestions[position] = "<image>"+ image_padding_tokens[padding_index] +"</image>" + new_qestions[position]
+        padding_index +=1
+    
+    vision_x = torch.cat(images,dim = 1).unsqueeze(0) #cat tensors and expand the batch_size dim
+    text = ''.join(new_qestions) 
+    return text, vision_x, 
+
+
+    # pad the dept to multiple of 4
+    # interpolate to 512
+       
     
     
 def main():
@@ -82,10 +128,17 @@ def main():
     
     ### Initialize a simple case for demo ###
     print("Setup demo case")
-    question = "Can you identify any visible signs of Cardiomegaly in the image?"
+    # question = "Can you identify any visible signs of Cardiomegaly in the image?"
+    # image =[
+    #         {
+    #             'img_path': './view1_frontal.jpg',
+    #             'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
+    #         }, # can add abitrary number of imgs
+    #     ] 
+    question = "Describe the finding in this report?"
     image =[
             {
-                'img_path': './view1_frontal.jpg',
+                'img_path': 'view1_frontal.jpg',
                 'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
             }, # can add abitrary number of imgs
         ] 
@@ -98,16 +151,16 @@ def main():
     model = MultiLLaMAForCausalLM(
         lang_model_path='./Language_files', ### Build up model based on LLaMa-13B config
     )
-    ckpt = torch.load('./Language_files/pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
+    ckpt = torch.load('/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
+    pdb.trace()
     model.load_state_dict(ckpt)
-
     print("Finish loading model")
     
     model = model.to('cuda')
     model.eval() 
     with torch.no_grad():
         lang_x = text_tokenizer(
-                text, max_length=512, truncation=True, return_tensors="pt"
+                text, max_length=2048, truncation=True, return_tensors="pt"
         )['input_ids'].to('cuda')
         
         vision_x = vision_x.to('cuda')
@@ -117,7 +170,6 @@ def main():
         print('Input: ', question)
         print('Output: ', generated_texts[0])
 
-    
 if __name__ == "__main__":
     main()
        

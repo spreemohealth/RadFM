@@ -5,14 +5,16 @@ from typing import List, Optional, Tuple, Union
 import transformers
 from My_Trainer.trainer import Trainer
 from dataclasses import dataclass, field
-from src.Dataset.multi_dataset_test import multi_dataset
-from src.Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
+from Dataset.multi_dataset_test import multi_dataset, MultidatasetBigrad
+from Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
 from datasampler import My_DistributedBatchSampler
 import torch
 from torch.utils.data import DataLoader  
 import csv
 import random
 import numpy as np
+import pdb
+
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -25,8 +27,8 @@ setup_seed(20)
 
 @dataclass
 class ModelArguments:
-    lang_encoder_path: Optional[str] = field(default="Quick_demo/Language_files")
-    tokenizer_path: str = field(default='Quick_demo/Language_files', metadata={"help": "Path to the tokenizer data."})   
+    lang_encoder_path: Optional[str] = field(default="../Quick_demo/Language_files")
+    tokenizer_path: str = field(default='../Quick_demo/Language_files', metadata={"help": "Path to the tokenizer data."})   
     #vision_encoder_path: str = field(default='/home/cs/leijiayu/wuchaoyi/multi_modal/src/PMC-CLIP/checkpoint.pt', metadata={"help": "Path to the vision_encoder."})   
     
 
@@ -101,11 +103,12 @@ def main():
     
     training_args.data_sampler = My_DistributedBatchSampler
     print("Setup Data")
-    Test_dataset = multi_dataset(text_tokenizer = model_args.tokenizer_path,test_split = data_args.test_split)
+    Test_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path, image_num=1#test_split = data_args.test_split
+                                     )
     
     Test_dataloader = DataLoader(
             Test_dataset,
-            batch_size=1,
+            batch_size=2,
             num_workers=1,
             pin_memory=True,
             sampler=None,
@@ -132,20 +135,26 @@ def main():
             question = sample["question"]
             belong_to = sample['belong_to']
             # img_pp = sample['img_path']
+            print(question)
             lang_x = Test_dataset.text_tokenizer(
-                question, max_length=2048, truncation=True, return_tensors="pt"
+                question, max_length=512, 
+                padding='max_length', 
+                truncation=True, 
+                return_tensors="pt"
             )['input_ids'].to('cuda')
             vision_x = sample["vision_x"].to('cuda')
             answer = sample['answer']
-            try:
-                generation = model.generate(lang_x,vision_x)
-                generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
-                writer.writerow([question,answer,generated_texts,belong_to])
-                cc = cc+1
+            # try:
+            generation = model.generate(lang_x,vision_x.to(torch.float))
+
+            generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
+            print(question,answer,generated_texts)
+            writer.writerow([question,answer,generated_texts,belong_to])
+            cc = cc+1
             # if cc>=10000:
             #     break
-            except:
-                continue
+            # except:
+            #     continue
 
 if __name__ == "__main__":
     main()

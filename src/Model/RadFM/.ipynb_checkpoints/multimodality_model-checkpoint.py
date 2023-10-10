@@ -13,13 +13,21 @@ class MultiLLaMAForCausalLM(nn.Module):
         super(MultiLLaMAForCausalLM, self).__init__()  
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
+                                          # "/mnt/team_s3_synced/msandora/llm_models/llama2chat_converted/",
+                                          torch_dtype=torch.bfloat16,
+                                          # use_flash_attention_2=True,
+                                          # load_in_4bit=False,
+                                          # load_in_16bit=True,
+                                          # load_in_8bit=False
         )
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
         # self.lang_model.requires_grad_(False)
+        # self.hidden_dim = 8192
         self.embedding_layer = MyEmbedding()
         self.embedding_layer.weight = self.lang_model.get_input_embeddings().weight
         self.hidden_dim = 5120
+        
         self.voc_size = 32000
         
     def forward(self,lang_x, vision_x, attention_mask, labels, loss_reweight,key_words_query):
@@ -30,6 +38,7 @@ class MultiLLaMAForCausalLM(nn.Module):
             # vision_x = vision_x + torch.zeros(1, dtype=vision_x.dtype, device=vision_x.device, requires_grad=True) 
             # input_embedding = checkpoint(self.embedding_layer, lang_x, vision_x)
             input_embedding,loss_match= self.embedding_layer(lang_x, vision_x,key_words_query)   # ,loss_matching
+            print(input_embedding.dtype, input_embedding.shape)
             output = self.lang_model(inputs_embeds = input_embedding,attention_mask = attention_mask, labels = labels)
             logits = output['logits']
 

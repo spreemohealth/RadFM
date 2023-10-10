@@ -75,6 +75,7 @@ class multi_dataset(Dataset):
             self.text_tokenizer.add_special_tokens(
                 special_token
             )
+            
             self.text_tokenizer.pad_token_id = 0
             self.text_tokenizer.bos_token_id = 1
             self.text_tokenizer.eos_token_id = 2
@@ -330,6 +331,7 @@ class MultidatasetBigrad(multi_dataset):
             self.text_tokenizer.add_special_tokens(
                 special_token
             )
+            self.text_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
             self.text_tokenizer.pad_token_id = 0
             self.text_tokenizer.bos_token_id = 1
             self.text_tokenizer.eos_token_id = 2
@@ -343,11 +345,11 @@ class MultidatasetBigrad(multi_dataset):
 
         ### closed ###
         # if self.test_split == 'diagnosis':
-        self.radnet_dataset = BigRadDataset(json_path = basepath+'radnet_test.json')
+        radnet_dataset = BigRadDataset(json_path = basepath+'radnet_test.json')
         self.dataset_reflect['radnet_dataset'] = radnet_dataset
         self.data_whole_2D = self.data_whole_2D +  [{'radnet_dataset':i} for i in range(len(radnet_dataset))]
         print('radnet_dataset loaded')
-        print(self.data_whole_2D)
+        # print(self.data_whole_2D)
         self.data_whole = self.data_whole_2D
         
         # self.mammo_dataset_bn = Binary_Dataset(csv_path = '../data_csv/mammo_balance_test.csv',  
