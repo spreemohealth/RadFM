@@ -75,6 +75,7 @@ class multi_dataset(Dataset):
             self.text_tokenizer.add_special_tokens(
                 special_token
             )
+            
             self.text_tokenizer.pad_token_id = 0
             self.text_tokenizer.bos_token_id = 1
             self.text_tokenizer.eos_token_id = 2
@@ -330,6 +331,7 @@ class MultidatasetBigrad(multi_dataset):
             self.text_tokenizer.add_special_tokens(
                 special_token
             )
+            self.text_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
             self.text_tokenizer.pad_token_id = 0
             self.text_tokenizer.bos_token_id = 1
             self.text_tokenizer.eos_token_id = 2

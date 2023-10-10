@@ -38,6 +38,7 @@ class MultiLLaMAForCausalLM(nn.Module):
             # vision_x = vision_x + torch.zeros(1, dtype=vision_x.dtype, device=vision_x.device, requires_grad=True) 
             # input_embedding = checkpoint(self.embedding_layer, lang_x, vision_x)
             input_embedding,loss_match= self.embedding_layer(lang_x, vision_x,key_words_query)   # ,loss_matching
+            print(input_embedding.dtype, input_embedding.shape)
             output = self.lang_model(inputs_embeds = input_embedding,attention_mask = attention_mask, labels = labels)
             logits = output['logits']
 

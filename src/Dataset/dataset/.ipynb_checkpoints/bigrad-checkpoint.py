@@ -37,6 +37,7 @@ class BigRadDataset(Dataset):
     """
     def __init__(self,json_path):
         data_info = pd.read_json(json_path)[:10]
+        data_info['image'] = "/mnt/team_s3_synced/msandora/"+data_info['image']
         self.img_path_list = data_info['image'].tolist()
         self.answer_list = data_info['answer'].tolist()
         self.transform = transforms.Compose([                        
@@ -55,7 +56,8 @@ class BigRadDataset(Dataset):
             image = Image.open(img_path).convert('RGB')   
             image = self.transform(image)
             image = image.unsqueeze(-1) # c,w,h,d
-        except:
+        except Exception as e:
+            print('Exception: ', e)
             image = np.random.randn(3,512,512,4)
         
         answer = self.answer_list[index]
