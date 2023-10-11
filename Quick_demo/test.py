@@ -14,10 +14,7 @@ from pydicom_series import read_files
 import os
 from PIL import Image
 import time
-import pandas as pd
-from MhdHelpers.mhd_handler import MhdHandler
-from cvtoolsaugmentations.transforms import PercentileIntensityCutOff, PadToSquare, NormalizeIntensityVolume, FixSlices, ReduceSliceResolution
-from albumentations import Compose
+
 
 def get_tokenizer(tokenizer_path, max_img_size = 100, image_num = 32):
     '''
@@ -83,119 +80,36 @@ def combine_and_preprocess(question,image_list,image_padding_tokens):
     text = ''.join(new_qestions) 
     return text, vision_x, 
 
-def transform_volume(volume, composed_transforms, **kwargs):
-        """ perform transformations for classification
-         Args:
-         volume (np.ndarray): The shape should be (Row, Cols, Slice)
-         composed_transforms (compose of list of transforms)
-         kwargs: optional arguments. 
-                For example, metadata={"TransformMatrix": np.eye(3),
-                        "Offset": np.zeros(3),
-                        "ElementSpacing": np.ones(3),
-                        "Dimsize": np.zeros(3)}
-           """
-        # change to (Row, Col, Slice)
-        print(type(volume), volume.shape, volume.dtype)
-        volume = np.transpose(volume,(1,2,0))
-        # Augment/transform and change to torch type (Slice, Row, Col)
-        # volume = composed_transforms(image=volume)['image'].type(torch.float) 
-        volume = composed_transforms(image=volume, **kwargs)['image']
-        print(type(volume), volume.shape, volume.dtype)
-        volume = volume.astype(float)
-        
-        return volume
-
-def metadata_as_dict(mhd):
-        """ Extract metadata information in the form of a dict.
-            This dict is useful for metadata transformation.
-
-        Args:
-            mhd (MhdHandler): If None, then the metadata is filled with empty metadata.
-                              This is useful when a sequence is missing.
-        Returns:
-            Dict: dictionary that contains the metadata information.
-        """
-        if mhd is None:
-            metadata = {"TransformMatrix": np.eye(3),
-                        "Offset": np.zeros(3),
-                        "ElementSpacing": np.ones(3),
-                        "Dimsize": np.zeros(3)}
-        else:
-            metadata = {"TransformMatrix": mhd.meta_data["TransformMatrix"].reshape(3,3),
-                                    "Offset": mhd.meta_data["Offset"],
-                                    "ElementSpacing": mhd.meta_data["ElementSpacing"],
-                                    "Dimsize": mhd.meta_data["DimSize"]}
-        return metadata
-
 def combine_and_preprocess_3D(question,image_list,image_padding_tokens):
     new_qestions = [_ for _ in question]
     padding_index = 0
-    
-    test_trnsfrms = [
-        ReduceSliceResolution(target_mm_spacing=4.0),
-        FixSlices(nTargetSlice=24),
-        PercentileIntensityCutOff(1, 99),
-        NormalizeIntensityVolume(),
-        PadToSquare(value="minimum", size=256, keep_offset=True),
-    ]
 
     images = []
     for ii in image_list:
         img_path = ii['img_path']
         position = ii['position']
 
-        print(img_path)
-        if "mhd" in img_path:
-            mhd = MhdHandler(img_path)
-            img = mhd.raw_data.astype('float32')
-            print(img.shape)
-            print(np.min(img), np.max(img))
-            
-            metadata = metadata_as_dict(mhd)
-            metadata['DimSize'] = metadata['Dimsize']
-            
-            img = transform_volume(img, composed_transforms=Compose(test_trnsfrms), metadata=metadata) 
-            print(img.shape)
-            print(np.min(img), np.max(img))
-            
-
-            
-        elif "dicom" or "dcm" in img_path:
-            all_series = read_files(img_path, False, False)
-            for i in all_series:
-                img = i.get_pixel_array()
-                
+        all_series = read_files(img_path, False, False)
+        for i in all_series:
+            img = i.get_pixel_array()
         img = (img - np.min(img))/ (np.max(img) - np.min(img))
-        print('*'*100)
-        print('after transformation')
-        print(img.shape)
-        print(np.min(img), np.max(img))
 
-        
-        img = torch.from_numpy(img).unsqueeze(0).repeat(3,1,1,1).unsqueeze(0)
-#         D = img.shape[0]
-#         H, W = img.shape[1], img.shape[2]
-#         n_D = 4-(D%4)
-#         img = np.concatenate([img, np.zeros((n_D,H,W))])
+        D = img.shape[0]
+        H, W = img.shape[1], img.shape[2]
+        n_D = 4-(D%4)
+        img = np.concatenate([img, np.zeros((n_D,H,W))])
 
-#         img1 = torch.transpose(torch.tensor(img), 0, 1)
-#         img2 = torch.transpose(torch.tensor(img1), 1, 2)
-#         img3 = torch.nn.functional.interpolate(torch.tensor(img2).unsqueeze(0).unsqueeze(0), size = (512, 512, 12))
-#         img3 = img3.repeat(1,3,1,1,1)
-        
-        print('*'*100)
-        print('finally')
-        print(img.shape)
-        print(torch.min(img), torch.max(img))
-        
-        
-        images.append(img.type(torch.float32))
+        img1 = torch.transpose(torch.tensor(img), 0, 1)
+        img2 = torch.transpose(torch.tensor(img1), 1, 2)
+        img3 = torch.nn.functional.interpolate(torch.tensor(img2).unsqueeze(0).unsqueeze(0), size = (512, 512, 12))
+        img3 = img3.repeat(1,3,1,1,1)
+        images.append(img3.type(torch.float32))
 
             ## add img placeholder to text
-        new_qestions[position] = new_qestions[position] + "<image>"+ image_padding_tokens[padding_index] +"</image>"
+        new_qestions[position] = "<image>"+ image_padding_tokens[padding_index] +"</image>" + new_qestions[position]
         padding_index +=1
     
-    vision_x = torch.cat(images,dim = 0).unsqueeze(0) #cat tensors and expand the batch_size dim
+    vision_x = torch.cat(images,dim = 1).unsqueeze(0) #cat tensors and expand the batch_size dim
     text = ''.join(new_qestions) 
     return text, vision_x, 
 
@@ -209,49 +123,26 @@ def main():
     
     print("Setup tokenizer")
     text_tokenizer,image_padding_tokens = get_tokenizer('./Language_files')
-    
-    print('image_padding_tokens: ',image_padding_tokens)
     print("Finish loading tokenizer")
-    
-    df_for_dl = pd.read_pickle("~/kawshik/multimodal/dataframes/df_for_dl_no_crop.pkl")
-    df_for_dl['ID'] = df_for_dl['study_id']
-
-    columns = [x for x in df_for_dl.columns if "x_" in x]
-    for col in columns:
-
-        df_for_dl[col] = df_for_dl.apply(lambda x: '/'.join(['/mnt','imaging','KneeNoCrops',x[col].split("/")[-1].split("_")[0],x[col].split("/")[-1].split(".")[0], x[col].split("/")[-1]]) if not pd.isna(x[col]) else x[col], axis=1)
-
-    df_for_dl = df_for_dl.dropna(subset=['raw_text'])
-
-
-    
-    remove_cases = pd.concat([pd.read_csv("~/kawshik/multimodal/dataframes/negative_spacing_cases.csv"),pd.read_csv("~/kawshik/multimodal/dataframes/too_big_spacing_cases.csv")])
-
-    df_for_dl = df_for_dl[~df_for_dl.study_id.isin(remove_cases.study_id.tolist())]
-
-    sample = df_for_dl.sample().iloc[0]
-    print(sample)
     
     ### Initialize a simple case for demo ###
     print("Setup demo case")
-    
-    question = "What can you find from the scans ?"
-    # question = "What disease can be diagnosed from these radiological images and what specific features are typically observed on the images?"
-    
+    # question = "Can you identify any visible signs of Cardiomegaly in the image?"
+    # image =[
+    #         {
+    #             'img_path': './view1_frontal.jpg',
+    #             'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
+    #         }, # can add abitrary number of imgs
+    #     ] 
+    question = "Describe the finding in this report?"
     image =[
             {
-                'img_path': sample['x_SagFS'],
-                'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
-            }, # can add abitrary number of imgs
-            {
-                'img_path': sample['x_CorFS'],
-                'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
+                'img_path': './test_dicom/',
+                'position': 0, #indicate where to put the images in the text string, range from [0,len(question)-1]
             }, # can add abitrary number of imgs
         ] 
         
-    text,vision_x = combine_and_preprocess_3D(question,image,image_padding_tokens) 
-    print(text)
-    print(vision_x.shape)
+    text,vision_x = combine_and_preprocess_3D(question,image,image_padding_tokens)    
         
     print("Finish loading demo case")
     
@@ -260,18 +151,11 @@ def main():
         lang_model_path='./Language_files', ### Build up model based on LLaMa-13B config
     )
     ckpt = torch.load('/mnt/team_s3_synced/msandora/RadFM//pytorch_model.bin',map_location ='cpu') # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
-    
-    
     model.load_state_dict(ckpt)
     print("Finish loading model")
     
-    for n, p in model.named_parameters():
-        print(n,p.dtype,p.requires_grad)
-        break
-    
     model = model.to('cuda')
     model.eval() 
-    
     with torch.no_grad():
         lang_x = text_tokenizer(
                 text, max_length=2048, truncation=True, return_tensors="pt"
