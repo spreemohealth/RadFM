@@ -14,7 +14,7 @@ class MultiLLaMAForCausalLM(nn.Module):
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
                                           # "/mnt/team_s3_synced/msandora/llm_models/llama2chat_converted/",
-                                          torch_dtype=torch.bfloat16,
+                                        #   torch_dtype=torch.bfloat16,
                                           # use_flash_attention_2=True,
                                           # load_in_4bit=False,
                                           # load_in_16bit=True,

@@ -13,7 +13,6 @@ from torch.utils.data import DataLoader
 import csv
 import random
 import numpy as np
-import pdb
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -108,7 +107,7 @@ def main():
     
     Test_dataloader = DataLoader(
             Test_dataset,
-            batch_size=2,
+            batch_size=4,
             num_workers=1,
             pin_memory=True,
             sampler=None,
@@ -135,9 +134,8 @@ def main():
             question = sample["question"]
             belong_to = sample['belong_to']
             # img_pp = sample['img_path']
-            print(question)
             lang_x = Test_dataset.text_tokenizer(
-                question, max_length=512, 
+                question, max_length=64, 
                 padding='max_length', 
                 truncation=True, 
                 return_tensors="pt"

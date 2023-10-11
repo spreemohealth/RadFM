@@ -28,7 +28,7 @@ spec:
       - name: radfm
         imagePullPolicy: Always
         # image: coverahealth.jfrog.io/ai-development-docker/kawshik/llava:noflash
-        image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:latest
+        image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:test_batch_inference
         command: ["python", "test.py"]
         
         volumeMounts:

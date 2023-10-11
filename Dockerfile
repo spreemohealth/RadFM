@@ -9,8 +9,11 @@ WORKDIR /radfm/
 COPY requirements.txt /radfm/
 
 RUN pip install --upgrade pip
-
+# RUN pip install pip==20.0.2
+RUN python -m pip cache purge
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# RUN pip install torch
+# RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 
 ENV MODEL_FOLDER="/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin"
 # ENV WITH_IMAGE="true"
