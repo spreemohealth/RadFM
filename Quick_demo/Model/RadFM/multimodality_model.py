@@ -15,9 +15,14 @@ class MultiLLaMAForCausalLM(nn.Module):
         try:
             self.lang_model = LlamaForCausalLM.from_pretrained(
                 lang_model_path,
+                torch_dtype = torch.bfloat16,
             )
-        except:
+        except Exception as e:
+            print('loading random llama model after exception: ', e)
             config = AutoConfig.from_pretrained(lang_model_path)
+            config.torch_dtype = torch.bfloat16
+            config.load_in_8bit = False
+            print(config)
             self.lang_model = LlamaForCausalLM(config)
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
