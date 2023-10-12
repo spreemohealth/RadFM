@@ -11,7 +11,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
 from torchvision import transforms
 from PIL import Image   
 from pydicom_series import read_files
-import os
+import os 
 from PIL import Image
 import time
 import pandas as pd
@@ -95,7 +95,7 @@ def transform_volume(volume, composed_transforms, **kwargs):
                         "Dimsize": np.zeros(3)}
            """
         # change to (Row, Col, Slice)
-        print(type(volume), volume.shape, volume.dtype)
+        # print(type(volume), volume.shape, volume.dtype)
         volume = np.transpose(volume,(1,2,0))
         # Augment/transform and change to torch type (Slice, Row, Col)
         # volume = composed_transforms(image=volume)['image'].type(torch.float) 
@@ -148,8 +148,8 @@ def combine_and_preprocess_3D(question,image_list,image_padding_tokens):
         if "mhd" in img_path:
             mhd = MhdHandler(img_path)
             img = mhd.raw_data.astype('float32')
-            print(img.shape)
-            print(np.min(img), np.max(img))
+            # print(img.shape)
+            # print(np.min(img), np.max(img))
             
             metadata = metadata_as_dict(mhd)
             metadata['DimSize'] = metadata['Dimsize']
@@ -192,11 +192,13 @@ def combine_and_preprocess_3D(question,image_list,image_padding_tokens):
         images.append(img.type(torch.float32))
 
             ## add img placeholder to text
-        new_qestions[position] = new_qestions[position] + "<image>"+ image_padding_tokens[padding_index] +"</image>"
+        new_qestions[position] = new_qestions[position] + "<image>" + image_padding_tokens[padding_index] + "</image>"
         padding_index +=1
     
     vision_x = torch.cat(images,dim = 0).unsqueeze(0) #cat tensors and expand the batch_size dim
-    text = ''.join(new_qestions) 
+    text = ''.join(new_qestions)
+    print(text)
+    
     return text, vision_x, 
 
 
@@ -228,13 +230,6 @@ def main():
     remove_cases = pd.concat([pd.read_csv("~/kawshik/multimodal/dataframes/negative_spacing_cases.csv"),pd.read_csv("~/kawshik/multimodal/dataframes/too_big_spacing_cases.csv")])
 
     df_for_dl = df_for_dl[~df_for_dl.study_id.isin(remove_cases.study_id.tolist())]
-
-    
-    sample = df_for_dl.sample().iloc[0]
-    while type(sample['x_SagFS']) == float or sample['x_CorFS'] == float:
-        sample = df_for_dl.sample().iloc[0]
-        
-    # print(sample)
     
     print("Setup Model")
     model = MultiLLaMAForCausalLM(
@@ -244,7 +239,6 @@ def main():
     
     
     model.load_state_dict(ckpt)
-    print("Finish loading model")
     
     for n, p in model.named_parameters():
         print(n,p.dtype,p.requires_grad)
@@ -253,48 +247,62 @@ def main():
     model = model.to('cuda')
     model.eval() 
     
-    ### Initialize a simple case for demo ###
-    print("Setup demo case")
-    
-    # for question in ["What disease can be diagnosed from these radiological images and what specific features are typically observed on the images?", "Please generate a radiology report from these scans", "What can you find from these scans", "Describe the findings and impressions from the following scans", "Please caption these scans with finding and impression", "Please make diagnosis based on these images", "What is the modality of these images"]:
+    print("Finish loading model")
+
     while True:
-    
+        sample = df_for_dl.sample().iloc[0]
+        while type(sample['x_SagFS']) == float or sample['x_CorFS'] == float:
+            sample = df_for_dl.sample().iloc[0]
         
-        print('raw_text: ',sample["raw_text"])
-        
-        # print("question: ", question)
-        
-        question = input("enter question") #"What can you find from the scans ?"
-        # question = "What disease can be diagnosed from these radiological images and what specific features are typically observed on the images?"
+    # print(sample)
 
-        image =[
-                {
-                    'img_path': sample['x_SagFS'],
-                    'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
-                }, # can add abitrary number of imgs
-                {
-                    'img_path': sample['x_CorFS'],
-                    'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
-                }, # can add abitrary number of imgs
-            ] 
+        ### Initialize a simple case for demo ###
+        print("Setup demo case")
 
-        text,vision_x = combine_and_preprocess_3D(question,image,image_padding_tokens) 
-        # print(text)
-        # print(vision_x.shape)
+        # for question in ["What disease can be diagnosed from these radiological images and what specific features are typically observed on the images?", "Please generate a radiology report from these scans", "What can you find from these scans", "Describe the findings and impressions from the following scans", "Please caption these scans with finding and impression", "Please make diagnosis based on these images", "What is the modality of these images"]:
+        while True:
 
-        print("Finish loading demo case")
 
-        with torch.no_grad():
-            lang_x = text_tokenizer(
-                    text, max_length=2048, truncation=True, return_tensors="pt"
-            )['input_ids'].to('cuda')
+            print('raw_text: ',sample["raw_text"])
 
-            vision_x = vision_x.to('cuda')
-            generation = model.generate(lang_x,vision_x)
-            generated_texts = text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
+            # print("question: ", question)
+
+            question = input("enter question (press 0 to exit)") #"What can you find from the scans ?"
+            # question = "What disease can be diagnosed from these radiological images and what specific features are typically observed on the images?"
+
+            if question == "0":
+                break
+
+            image =[
+                    {
+                        'img_path': sample['x_SagFS'],
+                        'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
+                    }, # can add abitrary number of imgs
+                    {
+                        'img_path': sample['x_CorFS'],
+                        'position': len(question)-1, #indicate where to put the images in the text string, range from [0,len(question)-1]
+                    }, # can add abitrary number of imgs
+                ] 
+
+            text,vision_x = combine_and_preprocess_3D(question,image,image_padding_tokens) 
+            # print(text)
+            # print(vision_x.shape)
+
+            print("Finish loading demo case")
+
+            with torch.no_grad():
+                lang_x = text_tokenizer(
+                        text, max_length=2048, truncation=True, return_tensors="pt"
+                )['input_ids'].to('cuda')
+
+                vision_x = vision_x.to('cuda')
+                generation = model.generate(lang_x,vision_x)
+                generated_texts = text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
+
+                print('Input: ', question)
+                print('Output: ', generated_texts[0])
             
-            print('Input: ', question)
-            print('Output: ', generated_texts[0])
+        
 
 if __name__ == "__main__":
     main()
