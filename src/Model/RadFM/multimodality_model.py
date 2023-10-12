@@ -11,6 +11,7 @@ import numpy as np
 class MultiLLaMAForCausalLM(nn.Module):
     def __init__(self, lang_model_path):  
         super(MultiLLaMAForCausalLM, self).__init__()  
+        print("Loading Model....")
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
                                           # "/mnt/team_s3_synced/msandora/llm_models/llama2chat_converted/",
@@ -20,6 +21,7 @@ class MultiLLaMAForCausalLM(nn.Module):
                                           # load_in_16bit=True,
                                           # load_in_8bit=False
         )
+        print("Model Loaded")
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
         # self.lang_model.requires_grad_(False)

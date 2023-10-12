@@ -26,7 +26,7 @@ setup_seed(20)
 
 @dataclass
 class ModelArguments:
-    lang_encoder_path: Optional[str] = field(default="../Quick_demo/Language_files")
+    lang_encoder_path: Optional[str] = field(default="/mnt/team_s3_synced/msandora/RadFM")
     tokenizer_path: str = field(default='../Quick_demo/Language_files', metadata={"help": "Path to the tokenizer data."})   
     #vision_encoder_path: str = field(default='/home/cs/leijiayu/wuchaoyi/multi_modal/src/PMC-CLIP/checkpoint.pt', metadata={"help": "Path to the vision_encoder."})   
     
@@ -102,7 +102,7 @@ def main():
     
     training_args.data_sampler = My_DistributedBatchSampler
     print("Setup Data")
-    Test_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path, image_num=1#test_split = data_args.test_split
+    Test_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path#test_split = data_args.test_split
                                      )
     
     Test_dataloader = DataLoader(
