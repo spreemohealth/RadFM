@@ -13,6 +13,10 @@ from torch.utils.data import DataLoader
 import csv
 import random
 import numpy as np
+import pickle
+import logging
+import os
+logging.basicConfig(filename=f'/mnt/team_s3_synced/msandora/RadFM/{os.getenv("LOG_FILE")}', level=logging.INFO)
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -27,7 +31,7 @@ setup_seed(20)
 @dataclass
 class ModelArguments:
     lang_encoder_path: Optional[str] = field(default="/mnt/team_s3_synced/msandora/RadFM")
-    tokenizer_path: str = field(default='../Quick_demo/Language_files', metadata={"help": "Path to the tokenizer data."})   
+    tokenizer_path: str = field(default='/mnt/team_s3_synced/msandora/RadFM', metadata={"help": "Path to the tokenizer data."})   
     #vision_encoder_path: str = field(default='/home/cs/leijiayu/wuchaoyi/multi_modal/src/PMC-CLIP/checkpoint.pt', metadata={"help": "Path to the vision_encoder."})   
     
 
@@ -97,17 +101,19 @@ class DataCollator(object):
         )
                  
 def main():
+    logging.info('Started')
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     
     training_args.data_sampler = My_DistributedBatchSampler
     print("Setup Data")
+    logging.info('Setup Data')
     Test_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path#test_split = data_args.test_split
                                      )
-    
+    logging.info('Setup Dataloader')
     Test_dataloader = DataLoader(
             Test_dataset,
-            batch_size=4,
+            batch_size=1,
             num_workers=1,
             pin_memory=True,
             sampler=None,
@@ -115,27 +121,31 @@ def main():
             collate_fn=None,
             drop_last=False,
     )  
-    
+    logging.info('Setup Model')
     print("Setup Model")
     model = MultiLLaMAForCausalLM(
         lang_model_path=model_args.lang_encoder_path,
     )
+    logging.info('Setup Model weights')
     ckpt = torch.load('/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin',map_location ='cpu')
     # ckpt.pop('embedding_layer.figure_token_weight')
     model.load_state_dict(ckpt,strict=False)
     model = model.to('cuda')
     model.eval() 
-    with open('output_whole_2_epoch' + data_args.test_split+'.csv', mode='w') as outfile:
-        writer = csv.writer(outfile)
-        writer.writerow(["Question", "Ground Truth","Pred",'belong_to'])
-        cc = 0
-        for sample in tqdm.tqdm(Test_dataloader):
-            
+    logging.info('starting evaluation')
+    # with open('output_whole_2_epoch' + data_args.test_split+'.csv', mode='w') as outfile:
+    #     writer = csv.writer(outfile)
+    #     writer.writerow(["Question", "Ground Truth","Pred",'belong_to'])
+    #     cc = 0
+    out = []
+    print("starting evaluation..")
+    for sample in tqdm.tqdm(Test_dataloader):
+        try:
             question = sample["question"]
             belong_to = sample['belong_to']
             # img_pp = sample['img_path']
             lang_x = Test_dataset.text_tokenizer(
-                question, max_length=64, 
+                question, max_length=2048, 
                 padding='max_length', 
                 truncation=True, 
                 return_tensors="pt"
@@ -146,9 +156,14 @@ def main():
             generation = model.generate(lang_x,vision_x.to(torch.float))
 
             generated_texts = Test_dataset.text_tokenizer.batch_decode(generation, skip_special_tokens=True) 
-            print(question,answer,generated_texts)
-            writer.writerow([question,answer,generated_texts,belong_to])
-            cc = cc+1
+            out.append([question,answer,generated_texts,belong_to])
+
+        except Exception as e:
+            logging.exception("error occured in generation")
+    pickle.dump(out, "/mnt/team_s3_synced/msandora/RadFM/radnet_result.pkl")
+    logging.info("completed")
+        # writer.writerow([question,answer,generated_texts,belong_to])
+        # cc = cc+1
             # if cc>=10000:
             #     break
             # except:

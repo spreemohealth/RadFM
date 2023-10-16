@@ -29,6 +29,9 @@ spec:
         imagePullPolicy: Always
         # image: coverahealth.jfrog.io/ai-development-docker/kawshik/llava:noflash
         image: coverahealth.jfrog.io/ai-development-docker/ishita/radfm:test_batch_inference
+        env: 
+        - name: LOG_FILE
+          value: "onprem.log"
         # image: coverahealth.jfrog.io/ai-development-docker/kawshik/radfm:latest
         command: ["python", "test.py"]
         

@@ -18,7 +18,8 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # ENV WITH_IMAGE="true"
 
 # ENV MODEL_TYPE="radfm"
-
+# ENV BATCH_SIZE = 1
+ENV LOG_FILE = "onprem.log"
 # EXPOSE 8501
 
 # CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]

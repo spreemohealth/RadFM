@@ -8,10 +8,11 @@ import torch
 from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
 import numpy as np
+import logging
 class MultiLLaMAForCausalLM(nn.Module):
     def __init__(self, lang_model_path):  
         super(MultiLLaMAForCausalLM, self).__init__()  
-        print("Loading Model....")
+        logging.info("Loading Model")
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
                                           # "/mnt/team_s3_synced/msandora/llm_models/llama2chat_converted/",
@@ -31,6 +32,7 @@ class MultiLLaMAForCausalLM(nn.Module):
         self.hidden_dim = 5120
         
         self.voc_size = 32000
+        logging.info("MultiLLaMAForCausalLM initialised successfully") 
         
     def forward(self,lang_x, vision_x, attention_mask, labels, loss_reweight,key_words_query):
         if labels.shape == lang_x.shape:
