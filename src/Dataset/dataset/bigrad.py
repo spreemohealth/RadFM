@@ -20,6 +20,7 @@ from tqdm import tqdm
 from torchvision import transforms
 from collections import defaultdict
 from PIL import Image
+import logging
 
 class BigRadDataset(Dataset):
     """_summary_
@@ -36,10 +37,12 @@ class BigRadDataset(Dataset):
             }
     """
     def __init__(self,json_path):
-        data_info = pd.read_json(json_path)[:10]
+        data_info = pd.read_json(json_path)
+        data_info = data_info.drop_duplicates(subset=['id', 'image', 'dataset','question', 'answer'])
         data_info['image'] = "/mnt/team_s3_synced/msandora/"+data_info['image']
         self.img_path_list = data_info['image'].tolist()
         self.answer_list = data_info['answer'].tolist()
+        logging.info("loaded dataset")
         self.transform = transforms.Compose([                        
                 transforms.RandomResizedCrop([512,512],scale=(0.8, 1.0), interpolation=transforms.InterpolationMode.BICUBIC),
                 transforms.ToTensor(),
