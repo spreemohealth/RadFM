@@ -18,6 +18,8 @@ import spacy
 from spacy.tokens import Span
 from scispacy.abbreviation import AbbreviationDetector
 from scispacy.umls_linking import UmlsEntityLinker
+from Dataset.dataset.bigrad import BigRadDataset
+from Dataset.dataset.internal3d import Internal3DDataset
 
 class umls_extractor:
     def __init__(self):
@@ -65,8 +67,8 @@ def stack_images(images):
     
     stack_images = []
     for s in images:
+        print('inside stack_images', s.shape)
         if len(s.shape) == 3:
-        #print(s.shape)
             stack_images.append(torch.nn.functional.interpolate(s.unsqueeze(0).unsqueeze(-1), size = (target_H,target_W,target_D)))
         else:
             stack_images.append(torch.nn.functional.interpolate(s.unsqueeze(0), size = (target_H,target_W,target_D)))
@@ -279,12 +281,23 @@ class multi_dataset(Dataset):
         answer = sample["answer"]
         images, question, answer = self.text_add_image(images,question,answer)
         
+        print('*'*100)
+        print('question: ',question)
+        print('*'*100)
+        print('answer: ',answer)
+        print('*'*100)
+        
         # print(question,answer)
         ### make vision_x
-        try:
-            vision_x = stack_images(images)
-        except:
-            print(self.data_whole[idx].items())
+        
+        print('image_list: ',[image.shape for image in images])
+        vision_x = stack_images(images)
+        print('vision_x: ',vision_x.shape)
+        
+#         try:
+#             vision_x = stack_images(images)
+#         except:
+#             print(self.data_whole[idx].items())
         #print(vision_x.shape,question,answer)
         
         ### make lang_x ###
@@ -301,15 +314,17 @@ class multi_dataset(Dataset):
         ### make label ###
         
         emphasize_words = []
-        emphasize_words =  [str(_) for _ in self.words_extract.extract(answer)]
+        # emphasize_words =  [str(_) for _ in self.words_extract.extract(answer)]
         
-        if emphasize_words != []:
-            emphasize_words_tensor  = self.text_tokenizer(
-                emphasize_words , max_length=self.max_seq
-            )
-            key_embeddings = [torch.tensor(_[1:]) for _ in emphasize_words_tensor['input_ids']]
-        else:
-            key_embeddings = []
+        # if emphasize_words != []:
+        #     emphasize_words_tensor  = self.text_tokenizer(
+        #         emphasize_words , max_length=self.max_seq
+        #     )
+        #     key_embeddings = [torch.tensor(_[1:]) for _ in emphasize_words_tensor['input_ids']]
+        # else:
+        #     key_embeddings = []
+        key_embeddings = []
+        
         question_tensor = self.text_tokenizer(
             question, max_length=self.max_seq, truncation=True, padding="max_length", return_tensors="pt"
         )
@@ -320,8 +335,8 @@ class multi_dataset(Dataset):
         labels[:question_length] = -100
         
         reweight_tensor = find_position(labels, key_embeddings)
-        if dataset_index == 'paper_inline_dataset':
-            emphasize_words = []
+        # if dataset_index == 'paper_inline_dataset':
+        emphasize_words = []
         # print(labels,key_embeddings,reweight_tensor)
         return {'vision_x': vision_x,'lang_x':lang_x, 'attention_mask': attention_mask, 'labels':labels, 'loss_reweight': reweight_tensor, 'key_words_query': emphasize_words}
     
@@ -374,7 +389,61 @@ class multi_dataset(Dataset):
                 
         
         
+class MultidatasetBigrad(multi_dataset):
+    
+    def __init__(self, text_tokenizer, max_seq = 2048, max_img_size = 10, image_num=32,voc_size =32000):
         
+        self.text_tokenizer = text_tokenizer
+        self.max_img_size = max_img_size
+        self.image_num = image_num
+        self.max_seq = max_seq
+        self.voc_size = voc_size
+        self.H = 512
+        self.W = 512
+        self.image_padding_tokens = []
+        if isinstance(self.text_tokenizer,str):
+            self.text_tokenizer = LlamaTokenizer.from_pretrained(
+                self.text_tokenizer,
+            )
+            special_token = {"additional_special_tokens": ["<image>","</image>"]}
+            for i in range(max_img_size):
+                image_padding_token = ""
+                for j in range(image_num):
+                    image_token = "<image"+str(i*image_num+j)+">"
+                    image_padding_token = image_padding_token + image_token
+                    special_token["additional_special_tokens"].append("<image"+str(i*image_num+j)+">")
+                self.image_padding_tokens.append(image_padding_token)
+            self.text_tokenizer.add_special_tokens(
+                special_token
+            )
+            self.text_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            self.text_tokenizer.pad_token_id = 0
+            self.text_tokenizer.bos_token_id = 1
+            self.text_tokenizer.eos_token_id = 2
+
+
+        self.data_whole_2D = []
+        self.data_whole_3D = []
+        self.dataset_reflect = {}
+        # self.test_split = test_split
+        # basepath = "/mnt/team_s3_synced/msandora/llava_data/"
+        path = "/mnt/team_blackhole/kawshik/multimodal_base_df_internal_60k.pkl"
+
+        ### closed ###
+#         # if self.test_split == 'diagnosis':
+#         radnet_dataset = BigRadDataset(json_path = basepath+'radnet_test.json')
+#         self.dataset_reflect['radnet_dataset'] = radnet_dataset
+#         self.data_whole_2D = self.data_whole_2D +  [{'radnet_dataset':i} for i in range(len(radnet_dataset))]
+#         print('radnet_dataset loaded')
+#         # print(self.data_whole_2D)
+#         self.data_whole = self.data_whole_2D
+        
+        internal_dataset = Internal3DDataset(path) #basepath+'multimodal_base_df_internal_60k.pkl')
+        self.dataset_reflect['internal_dataset'] = internal_dataset
+        self.data_whole_3D = self.data_whole_3D +  [{'internal_dataset':i} for i in range(len(internal_dataset))]
+        
+        
+        self.data_whole = self.data_whole_2D + self.data_whole_3D
         
         
 # torch.set_printoptions(profile="full")    

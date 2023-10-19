@@ -8,19 +8,67 @@ import torch
 from torch.utils.checkpoint import checkpoint
 from torch.autograd import Variable
 import numpy as np
+
+from peft import LoraConfig, get_peft_model
+from peft import prepare_model_for_kbit_training
+
+def find_all_linear_names(model):
+    cls = torch.nn.Linear
+    lora_module_names = set()
+    for name, module in model.named_modules():
+        if isinstance(module, cls):
+            names = name.split('.')
+            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
+
+
+    if 'lm_head' in lora_module_names: # needed for 16-bit
+        lora_module_names.remove('lm_head')
+    return list(lora_module_names)
+
 class MultiLLaMAForCausalLM(nn.Module):
-    def __init__(self, lang_model_path):  
+    def __init__(self, lang_model_path, lora_r = 64, lora_alpha = 16, lora_dropout = 0.05, lora_bias = "none", torch_dtype = torch.bfloat16, bits = 4):  
         super(MultiLLaMAForCausalLM, self).__init__()  
         self.lang_model = LlamaForCausalLM.from_pretrained(
             lang_model_path,
+            torch_dtype=torch_dtype,
+            # load_in_8_bit=True,
         )
+        
+        self.lang_model.requires_grad_(False)
+        
+        lora_config = LoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            target_modules=find_all_linear_names(self.lang_model),
+            lora_dropout=lora_dropout,
+            bias=lora_bias,
+            task_type="CAUSAL_LM",
+        )
+        # if .bits == 16:
+        #     if training_args.bf16:
+        #         self.lang_model.to(torch.bfloat16)
+        #     if training_args.fp16:
+        #         self.lang_model.to(torch.float16)
+                
+        # rank0_print("Adding LoRA adapters...")
+        self.lang_model = get_peft_model(self.lang_model, lora_config)
+        
+        if bits in [4, 8]:
+            
+            self.lang_model.config.torch_dtype=torch_dtype
+            self.lang_model = prepare_model_for_kbit_training(self.lang_model, use_gradient_checkpointing=True)
+
         self.lang_model.gradient_checkpointing_enable()
         self.lang_model.enable_input_require_grads()
         # self.lang_model.requires_grad_(False)
         self.embedding_layer = MyEmbedding()
+        
+        self.embedding_layer.requires_grad_(False)
         self.embedding_layer.weight = self.lang_model.get_input_embeddings().weight
         self.hidden_dim = 5120
         self.voc_size = 32000
+        
+        
         
     def forward(self,lang_x, vision_x, attention_mask, labels, loss_reweight,key_words_query):
         if labels.shape == lang_x.shape:

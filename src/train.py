@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union
 import transformers
 from My_Trainer.trainer import Trainer
 from dataclasses import dataclass, field
-from Dataset.multi_dataset import multi_dataset
+from Dataset.multi_dataset import multi_dataset, MultidatasetBigrad
 from Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
 from datasampler import My_DistributedBatchSampler
 from datasets import load_metric
@@ -22,8 +22,8 @@ def compute_metrics(eval_preds):
 
 @dataclass
 class ModelArguments:
-    lang_encoder_path: Optional[str] = field(default="/home/cs/leijiayu/wuchaoyi/book_pretrain/Results/Book_mix_2048_13B_full/checkpoint-45800")
-    tokenizer_path: str = field(default='/home/cs/leijiayu/wuchaoyi/Finetune_LLAMA/LLAMA_Model/tokenizer', metadata={"help": "Path to the tokenizer data."})   
+    lang_encoder_path: Optional[str] = field(default="/home/jovyan/kawshik/mm_it/RadFM/Quick_demo/Language_files/")
+    tokenizer_path: str = field(default="/home/jovyan/kawshik/mm_it/RadFM/Quick_demo/Language_files/", metadata={"help": "Path to the tokenizer data."})   
     
     
 
@@ -36,7 +36,7 @@ class TrainingArguments(transformers.TrainingArguments):
     remove_unused_columns: bool = field(default = False)
     batch_size_2D: int = field(default = 4)
     batch_size_3D: int = field(default = 1)
-    output_dir: Optional[str] = field(default="/home/cs/leijiayu/wuchaoyi/multi_modal/src/Results/BLIP_overfit/")
+    output_dir: Optional[str] = field(default="./Results/BLIP_overfit/")
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
 
@@ -52,10 +52,13 @@ class DataCollator(object):
         attention_masks = torch.cat([_.unsqueeze(0) for _ in attention_masks],dim  = 0)
         labels = torch.cat([_.unsqueeze(0) for _ in labels],dim  = 0)
         loss_reweight = torch.cat([_.unsqueeze(0) for _ in loss_reweight],dim  = 0)
-        #print(lang_xs.shape,attention_masks.shape,labels.shape)
+        print('lang shapes: ')
+        print(lang_xs.shape,attention_masks.shape,labels.shape, loss_reweight.shape)
         
-        target_H = 512
-        target_W = 512
+        # target_H = 512
+        # target_W = 512
+        target_H = 256
+        target_W = 256
         target_D = 4
         MAX_D = 0
            
@@ -84,6 +87,7 @@ class DataCollator(object):
         vision_xs = torch.nn.utils.rnn.pad_sequence(
             vision_xs, batch_first=True, padding_value=0
         )
+        print('vision shapes: ')
         print(vision_xs.shape,vision_xs.dtype)
         return dict(
             lang_x=lang_xs,
@@ -101,13 +105,50 @@ def main():
     training_args.data_sampler = My_DistributedBatchSampler
     
     print("Setup Data")
-    Train_dataset = multi_dataset(text_tokenizer = model_args.tokenizer_path)
-    Eval_dataset = multi_dataset_close(text_tokenizer = model_args.tokenizer_path)
+    Train_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path)
+    Eval_dataset = MultidatasetBigrad(text_tokenizer = model_args.tokenizer_path)
+    
+    print('*'*100)
+            
+    for b in Train_dataset:
+        for key in b:
+            
+            print(key, type(b[key]), (b[key].shape if str(type(b[key])) == "<class 'torch.Tensor'>" else len(b[key])))
+        break
+            
+    
+    print('*'*100)
+    
+    
     print("Setup Model")
 
     model = MultiLLaMAForCausalLM(
         lang_model_path=model_args.lang_encoder_path,
+        lora_r = 64, 
+        lora_alpha = 16, 
+        lora_dropout = 0.05, 
+        lora_bias = "none"
     )
+    
+    print("Model Setup done")
+    
+    
+    
+    print('*'*100)
+    for n,p in model.named_parameters():
+        if p.requires_grad:
+            print(n)
+            
+            
+    print('*'*100)
+    
+    print(model.lang_model)
+    tin = torch.rand(16,256,5120)
+    tout = model.lang_model.to('cuda')(inputs_embeds = tin.to('cuda'), attention_mask = torch.ones(16,256).to('cuda'))
+    print(tin.shape, tout.shape)
+    
+    
+    print('*'*100)
     
     trainer = Trainer(model=model, 
                       train_dataset = Train_dataset, 
