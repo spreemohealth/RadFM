@@ -85,6 +85,7 @@ class DfForDlDataset(Dataset):
         self.fred_daphne_df = pd.read_pickle(
             "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections.pkl"
         )
+        self.fred_daphne_df['findings'] = self.fred_daphne_df['findings'].apply(lambda x: "".join(x) if type(x)==list else x)        
 
         self.image_columns = [col for col in self.df.columns if 'x_' in col]
 
@@ -123,20 +124,21 @@ class DfForDlDataset(Dataset):
     def __getitem__(self, index):
 
         row = self.df.iloc[index]
+        print(row)
 
         image_paths = [row[col] for col in self.image_columns]
         image_dict = []
 
         question = "Describe the findings from the medical images you are provided with."
 
-        if self.fred_daphne_df[self.fred_daphne_df.study_id ==
-                               row['study_id']].iloc[0]['findings'].isna():
-
+        findings = self.fred_daphne_df[self.fred_daphne_df.study_id ==
+                               row['study_id']].iloc[0]['findings']
+        
+        if type(findings) != str:
             answer = row['findings']
         else:
-            findings = self.fred_daphne_df[self.fred_daphne_df.study_id ==
+            answer = self.fred_daphne_df[self.fred_daphne_df.study_id ==
                                            row['study_id']].iloc[0]['findings']
-            answer = "".join(findings)
 
         mhds_to_use = []
         corpd = False
