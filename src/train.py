@@ -1,4 +1,5 @@
-import tqdm.auto as tqdm
+# import tqdm as tqdm
+import tqdm
 import torch.nn.functional as F
 from typing import Optional, Dict, Sequence
 from typing import List, Optional, Tuple, Union
@@ -135,13 +136,20 @@ def main():
 
     print("Setup Data")
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, max_seq=1024)
+        text_tokenizer=model_args.tokenizer_path, max_seq=1024, split='train')
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024)
+                                      max_seq=1024,
+                                      split='validation')
 
     print('*' * 100)
 
-    for b in Train_dataset:
+    import time
+    start = time.time()
+    for b_i,b in enumerate(Train_dataset):
+#         if b_i%100==0:
+#             print(b_i/len(Train_dataset))
+            
+#             print('time: ',(time.time() - start) / (b_i+1))
         for key in b:
 
             print(key, type(b[key]), (b[key].shape if str(type(

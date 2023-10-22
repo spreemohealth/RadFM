@@ -75,7 +75,7 @@ def stack_images(images):
 
     stack_images = []
     for s in images:
-        print('inside stack_images', s.shape)
+        # print('inside stack_images', s.shape)
         if len(s.shape) == 3:
             stack_images.append(
                 torch.nn.functional.interpolate(s.unsqueeze(0).unsqueeze(-1),
@@ -412,18 +412,18 @@ class multi_dataset(Dataset):
         images, question, answer = self.text_add_image(images, question,
                                                        answer)
 
-        print('*' * 100)
-        print('question: ', question)
-        print('*' * 100)
-        print('answer: ', answer)
-        print('*' * 100)
+        # print('*' * 100)
+        # print('question: ', question)
+        # print('*' * 100)
+        # print('answer: ', answer)
+        # print('*' * 100)
 
         # print(question,answer)
         ### make vision_x
 
-        print('image_list: ', [image.shape for image in images])
+        # print('image_list: ', [image.shape for image in images])
         vision_x = stack_images(images)
-        print('vision_x: ', vision_x.shape)
+        # print('vision_x: ', vision_x.shape)
 
         #         try:
         #             vision_x = stack_images(images)
@@ -537,6 +537,7 @@ class MultidatasetBigrad(multi_dataset):
 
     def __init__(self,
                  text_tokenizer,
+                 split='train',
                  max_seq=2048,
                  max_img_size=10,
                  image_num=32,
@@ -588,7 +589,7 @@ class MultidatasetBigrad(multi_dataset):
         #         # print(self.data_whole_2D)
         #         self.data_whole = self.data_whole_2D
 
-        internal_dataset = DfForDlDataset(path_nocrop)  #, path_crop)
+        internal_dataset = DfForDlDataset(path_nocrop, split)  #, path_crop)
 
         # Internal3DDataset(
         #     path)  #basepath+'multimodal_base_df_internal_60k.pkl')
