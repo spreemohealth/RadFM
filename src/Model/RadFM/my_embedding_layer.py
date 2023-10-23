@@ -89,15 +89,15 @@ class MyEmbedding(nn.Module):
             B, S, C, H, W, D = vision_x.shape
             vision_x = rearrange(vision_x, "b S c h w d-> (b S) c h w d")
 
-            print('*' * 100)
-            print('vision_x: ', type(vision_x))
-            print(vision_x.dtype, vision_x.shape)
-            print('*' * 100)
-            print('vision_x parameters:')
-            for n, p in self.vision_encoder.named_parameters():
-                print(n, p.dtype)
+            # print('*' * 100)
+            # print('vision_x: ', type(vision_x))
+            # print(vision_x.dtype, vision_x.shape)
+            # print('*' * 100)
+            # print('vision_x parameters:')
+            # for n, p in self.vision_encoder.named_parameters():
+            #     print(n, p.dtype)
 
-            print('*' * 100)
+            # print('*' * 100)
             vision_x = vision_x.to(torch.bfloat16)
             vision_x, pos_embedding = self.vision_encoder(vision_x)
             # vision_x = Variable(vision_x,requires_grad=True)

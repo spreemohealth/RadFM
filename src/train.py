@@ -55,7 +55,7 @@ class DataArguments:
 class TrainingArguments(transformers.TrainingArguments):
     remove_unused_columns: bool = field(default=False)
     batch_size_2D: int = field(default=4)
-    batch_size_3D: int = field(default=1)
+    batch_size_3D: int = field(default=4)
     output_dir: Optional[str] = field(default="./Results/BLIP_overfit/")
     cache_dir: Optional[str] = field(default=None)
     optim: str = field(default="adamw_torch")
@@ -77,9 +77,9 @@ class DataCollator(object):
         labels = torch.cat([_.unsqueeze(0) for _ in labels], dim=0)
         loss_reweight = torch.cat([_.unsqueeze(0) for _ in loss_reweight],
                                   dim=0)
-        print('lang shapes: ')
-        print(lang_xs.shape, attention_masks.shape, labels.shape,
-              loss_reweight.shape)
+        # print('lang shapes: ')
+        # print(lang_xs.shape, attention_masks.shape, labels.shape,
+        #       loss_reweight.shape)
 
         # target_H = 512
         # target_W = 512
@@ -117,8 +117,8 @@ class DataCollator(object):
         vision_xs = torch.nn.utils.rnn.pad_sequence(vision_xs,
                                                     batch_first=True,
                                                     padding_value=0)
-        print('vision shapes: ')
-        print(vision_xs.shape, vision_xs.dtype)
+        # print('vision shapes: ')
+        # print(vision_xs.shape, vision_xs.dtype)
         return dict(lang_x=lang_xs,
                     vision_x=vision_xs,
                     attention_mask=attention_masks,
@@ -145,11 +145,11 @@ def main():
 
     import time
     start = time.time()
-    for b_i,b in enumerate(Train_dataset):
-#         if b_i%100==0:
-#             print(b_i/len(Train_dataset))
-            
-#             print('time: ',(time.time() - start) / (b_i+1))
+    for b_i, b in enumerate(Train_dataset):
+        #         if b_i%100==0:
+        #             print(b_i/len(Train_dataset))
+
+        #             print('time: ',(time.time() - start) / (b_i+1))
         for key in b:
 
             print(key, type(b[key]), (b[key].shape if str(type(

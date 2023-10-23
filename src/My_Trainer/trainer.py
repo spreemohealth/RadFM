@@ -2993,10 +2993,10 @@ class Trainer:
                 model, inputs, self.args.gradient_accumulation_steps)
             return loss_mb.reduce_mean().detach().to(self.args.device)
 
-        for key in inputs:
-            print(
-                key, inputs[key].shape
-                if type(inputs[key]) != list else len(inputs[key]))
+        # for key in inputs:
+        #     print(
+        #         key, inputs[key].shape
+        #         if type(inputs[key]) != list else len(inputs[key]))
 
         with self.compute_loss_context_manager():
             loss = self.compute_loss(model, inputs)
@@ -3034,18 +3034,18 @@ class Trainer:
             labels = None
         outputs = model(**inputs)
 
-        print('*' * 100)
-        print(type(labels), labels)
-        if labels is not None:
-            print(labels.shape, labels.dtype)
-        print('*' * 100)
-        print('inside trainer: ')
+        # print('*' * 100)
+        # print(type(labels), labels)
+        # if labels is not None:
+        #     print(labels.shape, labels.dtype)
+        # print('*' * 100)
+        # print('inside trainer: ')
 
-        print(type(outputs))
-        for key in outputs:
-            print(
-                key, outputs[key], outputs[key].shape
-                if type(outputs[key]) != list else len(outputs[key]))
+        # print(type(outputs))
+        # for key in outputs:
+        #     print(
+        #         key, outputs[key], outputs[key].shape
+        #         if type(outputs[key]) != list else len(outputs[key]))
         # Save past state if it exists
         # TODO: this needs to be fixed and made cleaner later.
         if self.args.past_index >= 0:
@@ -3066,9 +3066,8 @@ class Trainer:
             # We don't use .loss here since the model may return tuples instead of ModelOutput.
             loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
 
-        print('loss: ',loss)
+        # print('loss: ', loss)
 
-        
         return (loss, outputs) if return_outputs else loss
 
     def is_local_process_zero(self) -> bool:

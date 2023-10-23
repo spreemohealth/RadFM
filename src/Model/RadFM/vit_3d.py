@@ -154,9 +154,9 @@ class ViT(nn.Module):
     def forward(self, video):
         B, C, H, W, D = video.shape
 
-        print('video: ', video.dtype, video.shape)
-        for n, p in self.to_patch_embedding.named_parameters():
-            print(n, p.requires_grad)
+        # print('video: ', video.dtype, video.shape)
+        # for n, p in self.to_patch_embedding.named_parameters():
+        #     print(n, p.requires_grad)
         x = self.to_patch_embedding(video)
         b, n, _ = x.shape
 

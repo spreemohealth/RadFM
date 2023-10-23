@@ -82,7 +82,7 @@ class DfForDlDataset(Dataset):
 
         self.df = pd.read_pickle(nocrop_path)
         self.df = self.df[self.df.split.str.contains(split)]
-        print('split: ',split, self.df.shape)
+        print('split: ', split, self.df.shape)
 
         self.fred_daphne_df = pd.read_pickle(
             "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections.pkl"
@@ -134,8 +134,8 @@ class DfForDlDataset(Dataset):
             # print(row[col], type(row[col]))
             if type(row[col]) == str:
                 image_paths.append(row[col])
-        # print(image_paths)        
-        
+        # print(image_paths)
+
         image_dict = []
 
         question = "Describe the findings from the medical images you are provided with."
@@ -152,15 +152,15 @@ class DfForDlDataset(Dataset):
         mhds_to_use = []
         corpd = False
         sagpd = False
-        
+
         for image_path in image_paths:
             # if type(image_path) == str:
-                if "CorPDFS" in image_path:
-                    mhds_to_use.append("CorPDFS")
-                    corpd = True
-                if "SagPDFS" in image_path:
-                    mhds_to_use.append("SagPDFS")
-                    sagpd = True
+            if "CorPDFS" in image_path:
+                mhds_to_use.append("CorPDFS")
+                corpd = True
+            if "SagPDFS" in image_path:
+                mhds_to_use.append("SagPDFS")
+                sagpd = True
 
         if corpd is False:
             mhds_to_use.append("CorT2FS")
@@ -223,8 +223,8 @@ class Internal3DDataset(Dataset):
         ])
 
         logging.info("loaded dataset")
-        
-        self.cache = {}
+
+        # self.cache = {}
 
         self.study_ids = list(self.df.study_id.unique())
 
@@ -255,53 +255,53 @@ class Internal3DDataset(Dataset):
         return img
 
     def __getitem__(self, index):
-        
-        if index in self.cache:
-            return self.cache[index]
-        else:
-            rows = self.df[self.df.study_id == self.study_ids[index]]
 
-            image_paths = rows['file_paths'].tolist()
-            images = []
-            image_dict = []
+        # if index in self.cache:
+        #     return self.cache[index]
+        # else:
+        rows = self.df[self.df.study_id == self.study_ids[index]]
 
-            question = "Describe the findings from the medical images you are provided with."
-            answer = "".join(rows.iloc[0]['findings'])
+        image_paths = rows['file_paths'].tolist()
+        images = []
+        image_dict = []
 
-            for image_path in image_paths:
-                print(image_path,
-                      ("SagT2FS" in image_path[0] or "CorPDFS" in image_path[0]))
-                if "SagT2FS" in image_path[0] or "CorPDFS" in image_path[0]:
+        question = "Describe the findings from the medical images you are provided with."
+        answer = "".join(rows.iloc[0]['findings'])
 
-                    print('inside if', image_path)
-                    mhd_path = image_path[[
-                        i for i in range(len(image_path))
-                        if image_path[i][-4:] == '.mhd'
-                    ][0]]
-                    print(mhd_path)
+        for image_path in image_paths:
+            # print(image_path,
+            #       ("SagT2FS" in image_path[0] or "CorPDFS" in image_path[0]))
+            if "SagT2FS" in image_path[0] or "CorPDFS" in image_path[0]:
 
-                    image = self.load_mhd(mhd_path)
+                # print('inside if', image_path)
+                mhd_path = image_path[[
+                    i for i in range(len(image_path))
+                    if image_path[i][-4:] == '.mhd'
+                ][0]]
+                # print(mhd_path)
 
-                    print(image.shape)
+                image = self.load_mhd(mhd_path)
 
-                    image_dict.append({
-                        "image":
-                        torch.from_numpy(image).unsqueeze(0).repeat(3, 1, 1, 1),
-                        "position": {
-                            "question": len(question)
-                        }
-                    })
+                # print(image.shape)
 
-            # print(image_dict)
-            
-            self.cache[index] = {
-                "image_dict": image_dict,
-                "question": question,
-                "answer": answer,
-            }
+                image_dict.append({
+                    "image":
+                    torch.from_numpy(image).unsqueeze(0).repeat(3, 1, 1, 1),
+                    "position": {
+                        "question": len(question)
+                    }
+                })
 
-            return {
-                "image_dict": image_dict,
-                "question": question,
-                "answer": answer,
-            }
+        # print(image_dict)
+
+        # self.cache[index] = {
+        #     "image_dict": image_dict,
+        #     "question": question,
+        #     "answer": answer,
+        # }
+
+        return {
+            "image_dict": image_dict,
+            "question": question,
+            "answer": answer,
+        }

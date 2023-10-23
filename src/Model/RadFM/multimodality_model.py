@@ -61,26 +61,26 @@ class MultiLLaMAForCausalLM(nn.Module):
             # vision_x = vision_x + torch.zeros(1, dtype=vision_x.dtype, device=vision_x.device, requires_grad=True)
             # input_embedding = checkpoint(self.embedding_layer, lang_x, vision_x)
 
-            print('lang_x', lang_x.dtype, lang_x.shape)
-            print('vision_x', vision_x.dtype, vision_x.shape)
+            # print('lang_x', lang_x.dtype, lang_x.shape)
+            # print('vision_x', vision_x.dtype, vision_x.shape)
 
             input_embedding, loss_match = self.embedding_layer(
                 lang_x, vision_x, key_words_query)  # ,loss_matching
 
-            print('after embedding layer: ')
-            print('input_embedding: ', input_embedding.shape,
-                  input_embedding.dtype)
-            print('attn mask: ', attention_mask.shape, attention_mask.dtype)
-            print('labels: ', labels.shape, labels.dtype)
+            # print('after embedding layer: ')
+            # print('input_embedding: ', input_embedding.shape,
+            #       input_embedding.dtype)
+            # print('attn mask: ', attention_mask.shape, attention_mask.dtype)
+            # print('labels: ', labels.shape, labels.dtype)
 
             output = self.lang_model(inputs_embeds=input_embedding,
                                      attention_mask=attention_mask,
                                      labels=labels)
             logits = output['logits']
-            print('*' * 100)
-            print('logits: ', logits.dtype, logits.shape)
-            print('loss_reweight: ', loss_reweight.dtype, loss_reweight.shape)
-            print('*' * 100)
+            # print('*' * 100)
+            # print('logits: ', logits.dtype, logits.shape)
+            # print('loss_reweight: ', loss_reweight.dtype, loss_reweight.shape)
+            # print('*' * 100)
 
             loss_reg = None
             if labels is not None:
@@ -97,20 +97,20 @@ class MultiLLaMAForCausalLM(nn.Module):
                 shift_labels = shift_labels.to(shift_logits.device)
                 shift_loss_reweight = shift_loss_reweight.to(
                     shift_logits.device)
-                print('*' * 100)
-                print('shift_logits: ', shift_logits.dtype, shift_logits.shape)
-                print('shift_labels: ', shift_labels.dtype, shift_labels.shape)
-                print('*' * 100)
+                # print('*' * 100)
+                # print('shift_logits: ', shift_logits.dtype, shift_logits.shape)
+                # print('shift_labels: ', shift_labels.dtype, shift_labels.shape)
+                # print('*' * 100)
 
                 loss_reg = loss_fct(shift_logits, shift_labels)
                 loss_reg = torch.sum(shift_loss_reweight *
                                      loss_reg) / torch.sum(shift_loss_reweight)
             loss = loss_reg
 
-            print('*' * 100)
-            print('inside multimodality model:')
-            print('loss: ', loss)
-            print('*' * 100)
+            # print('*' * 100)
+            # print('inside multimodality model:')
+            # print('loss: ', loss)
+            # print('*' * 100)
 
             if loss_match != None:
                 loss = 0.8 * loss + 0.2 * loss_match
