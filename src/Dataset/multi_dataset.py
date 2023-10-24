@@ -412,6 +412,7 @@ class multi_dataset(Dataset):
         images, question, answer = self.text_add_image(images, question,
                                                        answer)
 
+        # print('answer: ',answer)
         # print('*' * 100)
         # print('question: ', question)
         # print('*' * 100)
@@ -433,11 +434,18 @@ class multi_dataset(Dataset):
 
         ### make lang_x ###
         self.text_tokenizer.padding_side = "right"
-        text_tensor = self.text_tokenizer(question + ' ' + answer,
-                                          max_length=self.max_seq,
-                                          truncation=True,
-                                          padding="max_length",
-                                          return_tensors="pt")
+        if self.mode == 'eval':
+            text_tensor = self.text_tokenizer(question,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              # padding="max_length",
+                                              return_tensors="pt")
+        else:
+            text_tensor = self.text_tokenizer(question + ' ' + answer,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              padding="max_length",
+                                              return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
         try:
@@ -466,6 +474,7 @@ class multi_dataset(Dataset):
                                               return_tensors="pt")
         question_length = torch.sum(question_tensor["attention_mask"][0])
         labels = lang_x.clone()
+        
         labels[labels == self.text_tokenizer.pad_token_id] = -100
         labels[labels >= self.voc_size] = -100
         labels[:question_length] = -100
@@ -475,8 +484,11 @@ class multi_dataset(Dataset):
         emphasize_words = []
         # print(labels,key_embeddings,reweight_tensor)
         return {
+            # 'study_id':,
             'vision_x': vision_x,
             'lang_x': lang_x,
+            'question': question,
+            'answer': answer,
             'attention_mask': attention_mask,
             'labels': labels,
             'loss_reweight': reweight_tensor,
@@ -538,6 +550,7 @@ class MultidatasetBigrad(multi_dataset):
     def __init__(self,
                  text_tokenizer,
                  split='train',
+                 mode='train',
                  max_seq=2048,
                  max_img_size=10,
                  image_num=32,
@@ -600,6 +613,8 @@ class MultidatasetBigrad(multi_dataset):
         } for i in range(len(internal_dataset))]
 
         self.data_whole = self.data_whole_2D + self.data_whole_3D
+        
+        self.mode = mode
 
 
 # torch.set_printoptions(profile="full")

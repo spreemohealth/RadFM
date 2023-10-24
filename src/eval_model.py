@@ -136,27 +136,18 @@ def main():
 
     print("Setup Data")
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, max_seq=1024, split='train')
+        text_tokenizer=model_args.tokenizer_path, 
+                       max_seq=1024, 
+                       split='train',
+                       mode = 'eval')
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
                                       max_seq=1024,
-                                      mode = 'eval',
-                                      split='validation')
-    
-    
-#     for i in Eval_dataset:
-#         print('*'*100)
-#         for key in i:
-#             print(key, i[key].shape if type(i[key])==type(torch.rand) else i[key])
-#         # print(torch.unique(i['labels']))
-#         print('-'*100)
-#         print(Eval_dataset.text_tokenizer.decode(i['lang_x']))
-#         print('-'*100)
-#         print(Eval_dataset.text_tokenizer.decode(torch.where(i['labels']==-100, torch.zeros_like(i['labels']), i['labels'])))
-#         print('*'*100)
-#         input("enter to continue")
-        
-        
-#     exit(0)
+                                      split='validation',
+                                      mode = 'eval')
+    Test_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
+                                      max_seq=1024,
+                                      split='validation',
+                                      mode = 'eval')
 
     print('*' * 100)
 
@@ -183,12 +174,7 @@ def main():
 
     print("Load pretrained ckpt ")
 
-    ckpt = torch.load(
-        '/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin',
-        map_location='cpu'
-    )  # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
-
-    model.load_state_dict(ckpt, strict=False)
+    
 
     print("add Lora adapters")
 
@@ -232,25 +218,11 @@ def main():
     #     self.lang_model = prepare_model_for_kbit_training(
     #         self.lang_model, use_gradient_checkpointing=True)
 
-    print("freezing everything except lora")
-
-    total = 0
-    for n, p in model.named_parameters():
-        if "lora" in n:
-            p.requires_grad = True
-            total += p.numel()
-        else:
-            p.requires_grad = False
-
-    print('*' * 100, '\n', 'num_params:', total)
+    # print('*' * 100, '\n', 'num_params:', total)
     print("Model Setup done")
-
-    print('*' * 100)
-    for n, p in model.named_parameters():
-        if p.requires_grad:
-            print(n)
-
-    print('*' * 100)
+    
+    model = model.to('cuda')
+    model.eval() 
 
     # print(model.lang_model)
     # tin = torch.rand(16, 256, 5120)
@@ -260,49 +232,46 @@ def main():
     # print(tin.shape, tout.shape)
 
     # print('*' * 100)
-
-    trainer = Trainer(model=model,
-                      train_dataset=Train_dataset,
-                      eval_dataset=Eval_dataset,
-                      args=training_args,
-                      data_collator=DataCollator(),
-                      compute_metrics=compute_metrics)
     
-    # trainer._load_from_checkpoint('/mnt/team_blackhole/kawshik/radfm_checkpoints/checkpoint-250/')
-    
-    
-    Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024,
-                                      split='validation')
-    
-    print(trainer.evaluate(Eval_dataset))
-    
-    Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024,
-                                      split='validation',
-                                      model = 'eval')
-    
-    outputs = trainer.predict(Eval_dataset)
-    print(outputs.predictions)
-    predictions = outputs.predictions
-    labels = outputs.label_ids
-    metrics = outputs.metrics
-    
-    print(predictions.shape, labels.shape, metrics)
-    
-    for p_i, p in enumerate(zip(predictions, Eval_dataset)):
-        prediction, eval_data_i = p
-        print(prediction)
-        prediction = Eval_dataset.text_tokenizer.decode(prediction, skip_special_tokens=True) 
-        print(prediction)
-        print('question: ', eval_data_i['question'])
-        print('answer: ', eval_data_i['answer'])
-        print('pred: ', prediction)
+    c_i = 0
+    for instance in tqdm.tqdm(Train_dataset):
+        vision_x = instance['vision_x']
+        vision_x = torch.nn.functional.interpolate(vision_x,
+                                            size=(256,256,24))
+        
+        lang_x = instance['lang_x']
+        attention_mask = instance['attention_mask']
+        print(vision_x.shape, lang_x.shape, attention_mask.shape)
+                
+        generation = model.generate(lang_x.unsqueeze(0).to('cuda'),vision_x.unsqueeze(0).to('cuda')).squeeze(0)
+        print('generation: ', generation)
+        generated_texts = Test_dataset.text_tokenizer.decode(generation, skip_special_tokens=True)
+        
+        print('*'*100)
+        print('question: ', Test_dataset.text_tokenizer.decode(instance['lang_x']))
+        # print('
+        print('-'*25)
+        print('answer: ', instance['answer'])
+        print('-'*25)
+        print('prediction: ',Test_dataset.text_tokenizer.convert_ids_to_tokens(generation))
+        print('*'*100)
+        
+        
         input("enter to continue")
-    
+        
+        c_i += 1
+        
+        # {
+        #     'vision_x': vision_x,
+        #     'lang_x': lang_x,
+        #     'attention_mask': attention_mask,
+        #     'labels': labels,
+        #     'loss_reweight': reweight_tensor,
+        #     'key_words_query': emphasize_words
+        # }
 
-    # trainer.train()
-    # trainer.save_state()
+    trainer.train()
+    trainer.save_state()
 
 
 if __name__ == "__main__":

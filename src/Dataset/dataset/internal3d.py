@@ -81,8 +81,11 @@ class DfForDlDataset(Dataset):
     def __init__(self, nocrop_path, split):
 
         self.df = pd.read_pickle(nocrop_path)
+        
         self.df = self.df[self.df.split.str.contains(split)]
         print('split: ', split, self.df.shape)
+        
+        self.df = self.df.iloc[:10]
 
         self.fred_daphne_df = pd.read_pickle(
             "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections.pkl"
