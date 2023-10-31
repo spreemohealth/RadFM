@@ -128,7 +128,8 @@ class MultiLLaMAForCausalLM(nn.Module):
             return dict(
                 # loss_reg = loss_reg,
                 # loss_matching = loss_matching,
-                logits=Accuracy,
+                logits=logits,
+                accuracy=Accuracy,
                 loss=output['loss'],
             )
         ### useless for now ignore the folowing codes ###

@@ -15,6 +15,10 @@ scikit-learn
 tokenizers==0.13.3
 timm
 wandb
+evaluate
+rouge
+nltk
+rouge-score
 # Pillow==10.0.1
 albumentations
 datasets

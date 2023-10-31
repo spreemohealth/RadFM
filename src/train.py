@@ -15,6 +15,13 @@ import numpy as np
 import torch
 from peft import LoraConfig, get_peft_model
 from peft import prepare_model_for_kbit_training
+from transformers import LlamaTokenizer
+import evaluate
+
+rouge_score = evaluate.load("rouge")
+
+tokenizer = LlamaTokenizer.from_pretrained(
+    "/mnt/team_blackhole/kawshik/Language_files/")
 
 
 def find_all_linear_names(model):
@@ -32,9 +39,32 @@ def find_all_linear_names(model):
 
 def compute_metrics(eval_preds):
     # metric = load_metric("glue", "mrpc")
-    ACCs = eval_preds.predictions
+    # print(eval_preds.predictions.shape)
+    preds = tokenizer.batch_decode(eval_preds.predictions)
+
+    labels = tokenizer.batch_decode(
+        np.where(eval_preds.label_ids == -100,
+                 np.zeros(eval_preds.label_ids.shape), eval_preds.label_ids))
+
+    labels = [
+        label.replace(tokenizer.decode(np.zeros((1))), "") for label in labels
+    ]
+    # for i,pred in enumerate(preds):
+    #     print('*'*100)
+    #     print('pred: ',pred)
+    #     print('-'*100)
+    #     print("labels: ",labels[i].replace(tokenizer.decode(np.zeros((1))),""))
+    #     print('-'*100)
+    #     input("enter to continue")
+
+    result = rouge_score.compute(predictions=preds,
+                                 references=labels,
+                                 use_stemmer=True)
+
     # print(ACCs)
-    return {"accuracy": np.mean(ACCs, axis=-1)}
+    result = {key: value for key, value in result.items()}
+
+    return result
 
 
 @dataclass
@@ -127,6 +157,14 @@ class DataCollator(object):
                     key_words_query=key_words_query)
 
 
+def get_preds(logits, labels):
+    out = logits[0]
+    # print(logits[0].shape, logits[0].dtype)
+    # print(logits[1].shape, logits[1].dtype)
+    # print(logits.shape, logits.dtype)
+    return out.max(dim=-1)[1]
+
+
 def main():
     parser = transformers.HfArgumentParser(
         (ModelArguments, DataArguments, TrainingArguments))
@@ -136,9 +174,9 @@ def main():
 
     print("Setup Data")
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, max_seq=1024, split='train')
+        text_tokenizer=model_args.tokenizer_path, max_seq=1280, split='train')
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024,
+                                      max_seq=1280,
                                       split='validation')
 
     print('*' * 100)
@@ -212,7 +250,7 @@ def main():
 
     total = 0
     for n, p in model.named_parameters():
-        if "lora" in n:
+        if "lora" in n or "embedding_layer" in n:
             p.requires_grad = True
             total += p.numel()
         else:
@@ -242,7 +280,8 @@ def main():
                       eval_dataset=Eval_dataset,
                       args=training_args,
                       data_collator=DataCollator(),
-                      compute_metrics=compute_metrics)
+                      compute_metrics=compute_metrics,
+                      preprocess_logits_for_metrics=get_preds)
 
     trainer.train()
     trainer.save_state()
