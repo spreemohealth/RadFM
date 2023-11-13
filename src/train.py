@@ -249,8 +249,15 @@ def main():
     print("freezing everything except lora")
 
     total = 0
+
+    lora_params = []
+    finetune_params = []
     for n, p in model.named_parameters():
         if "lora" in n or "embedding_layer" in n:
+            if "lora" in n:
+                lora_params.append(p)
+            else:
+                finetune_params.append(p)
             p.requires_grad = True
             total += p.numel()
         else:
@@ -275,10 +282,27 @@ def main():
 
     # print('*' * 100)
 
+    optimizer_grouped_parameters = [
+        {
+            "params": lora_params,
+            "lr": 1e-4,
+            "weight_decay": 1e-6,
+            # "initial_lr": 1e-6,
+        },
+        {
+            "params": finetune_params,
+            "weight_decay": 1e-4,
+            "lr": 3e-5,
+        }
+    ]
+
+    optimizer = transformers.AdamW(params=optimizer_grouped_parameters)
+
     trainer = Trainer(model=model,
                       train_dataset=Train_dataset,
                       eval_dataset=Eval_dataset,
                       args=training_args,
+                      optimizers=(optimizer, None),
                       data_collator=DataCollator(),
                       compute_metrics=compute_metrics,
                       preprocess_logits_for_metrics=get_preds)

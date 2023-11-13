@@ -78,15 +78,15 @@ def metadata_as_dict(mhd):
 
 class DfForDlDataset(Dataset):
 
-    def __init__(self, nocrop_path, split):
+    def __init__(self, nocrop_path, sep_qa_path, fred_daphne_path, split):
 
         self.df = pd.read_pickle(nocrop_path)
         self.df = self.df[self.df.split.str.contains(split)]
         print('split: ', split, self.df.shape)
 
-        self.fred_daphne_df = pd.read_pickle(
-            "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections.pkl"
-        )
+        self.sep_qa_df = pd.read_pickle(sep_qa_path)
+
+        self.fred_daphne_df = pd.read_pickle(fred_daphne_path)
         self.fred_daphne_df['findings'] = self.fred_daphne_df[
             'findings'].apply(lambda x: "".join(x) if type(x) == list else x)
 
@@ -124,6 +124,72 @@ class DfForDlDataset(Dataset):
 
         return img
 
+    def get_qa(self, row, choice=None):
+
+        if choice is None:
+            choice = np.random.choice([1, 2, 3])
+
+        fred_daphne_row = self.fred_daphne_df[self.fred_daphne_df.study_id ==
+                                              row['study_id']].iloc[0]
+
+        sep_qa_row = self.sep_qa_df[self.sep_qa_df.ID ==
+                                    row['study_id']].iloc[0]
+
+        if choice == 1:
+            question = "Describe the findings from the medical images you are provided with."
+
+            findings = fred_daphne_row['findings']
+
+            if type(findings) != str:
+                answer = row['findings']
+            else:
+                answer = fred_daphne_row['findings']
+
+        elif choice == 2:
+            if len(fred_daphne_row["findings_segments"]) > 0:
+                topic = np.random.choice(
+                    list(fred_daphne_row["findings_segments"].keys()))
+                question = f"What are the findings for {topic} from the given study?"
+                answer = fred_daphne_row["findings_segments"][topic]
+            elif len(fred_daphne_row["rawtext_segments"]) > 0:
+
+                topics = fred_daphne_row["findings_segments"].keys()
+                useful_topics = []
+                for topic in topics:
+
+                    f = 0
+                    for word in [
+                            "history", "systems", "findings", "mri", "-2",
+                            "normal"
+                    ]:
+                        if word in topic.lower():
+                            f = 1
+                            break
+
+                    if "is " == topic[:3].lower():
+                        f = 1
+
+                    if f == 0:
+                        useful_topics.append(topic)
+
+                topic = np.random.choice(useful_topics)
+
+                question = f"What are the findings for {topic} from the given study?"
+                answer = fred_daphne_row["rawtext_segments"][topic]
+            else:
+                return self.get_qa(row, choice=1)
+
+        elif choice == 3:
+            if len(sep_qa_row) == 0:
+                return self.get_qa(row, choice=2)
+            else:
+                pathology = np.random.choice(list(sep_qa_row['sep_qa'].keys()))
+                question = sep_qa_row['sep_qa'][pathology]['findings'][
+                    'question']
+                answer = sep_qa_row['sep_qa'][pathology]['findings']['answer']
+
+        return question, answer
+
     def __getitem__(self, index):
 
         row = self.df.iloc[index]
@@ -138,16 +204,7 @@ class DfForDlDataset(Dataset):
 
         image_dict = []
 
-        question = "Describe the findings from the medical images you are provided with."
-
-        findings = self.fred_daphne_df[self.fred_daphne_df.study_id ==
-                                       row['study_id']].iloc[0]['findings']
-
-        if type(findings) != str:
-            answer = row['findings']
-        else:
-            answer = self.fred_daphne_df[self.fred_daphne_df.study_id ==
-                                         row['study_id']].iloc[0]['findings']
+        question, answer = self.get_qa(row)
 
         mhds_to_use = []
         corpd = False

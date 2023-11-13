@@ -436,7 +436,7 @@ class multi_dataset(Dataset):
         text_tensor = self.text_tokenizer(question + ' ' + answer,
                                           max_length=self.max_seq,
                                           truncation=True,
-                                          padding="max_length",
+                                          padding=True,
                                           return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
@@ -589,7 +589,12 @@ class MultidatasetBigrad(multi_dataset):
         #         # print(self.data_whole_2D)
         #         self.data_whole = self.data_whole_2D
 
-        internal_dataset = DfForDlDataset(path_nocrop, split)  #, path_crop)
+        image_df_path = "/mnt/team_blackhole/kawshik/df_for_dl_no_crop.pkl"
+        sep_qa_path = "/mnt/team_blackhole/kawshik/seq_qa.pkl"
+        report_qa_path = "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections_and_segments_v2.pkl"
+
+        internal_dataset = DfForDlDataset(image_df_path, sep_qa_path,
+                                          report_qa_path, split)  #, path_crop)
 
         # Internal3DDataset(
         #     path)  #basepath+'multimodal_base_df_internal_60k.pkl')
