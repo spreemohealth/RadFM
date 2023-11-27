@@ -40,7 +40,19 @@ def find_all_linear_names(model):
 def compute_metrics(eval_preds):
     # metric = load_metric("glue", "mrpc")
     # print(eval_preds.predictions.shape)
-    preds = tokenizer.batch_decode(eval_preds.predictions)
+    # print(eval_preds.predictions)
+    # print(tokenizer)
+    # print(tokenizer.additional_special_tokens)
+    # preds = tokenizer.batch_decode(eval_preds.predictions)
+
+    preds = tokenizer.batch_decode(
+        np.where(eval_preds.predictions == -100,
+                 np.zeros(eval_preds.predictions.shape),
+                 eval_preds.predictions))
+
+    preds = [
+        pred.replace(tokenizer.decode(np.zeros((1))), "") for pred in preds
+    ]
 
     labels = tokenizer.batch_decode(
         np.where(eval_preds.label_ids == -100,
@@ -92,7 +104,7 @@ class TrainingArguments(transformers.TrainingArguments):
 
 
 @dataclass
-class DataCollator(object):
+class DataCollator_orig(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         #print(instances) 'loss_reweight': reweight_tensor, 'key_words_query': emphasize_words
@@ -106,6 +118,92 @@ class DataCollator(object):
                                     dim=0)
         labels = torch.cat([_.unsqueeze(0) for _ in labels], dim=0)
         loss_reweight = torch.cat([_.unsqueeze(0) for _ in loss_reweight],
+                                  dim=0)
+        # print('lang shapes: ')
+        # print(lang_xs.shape, attention_masks.shape, labels.shape,
+        #       loss_reweight.shape)
+
+        # target_H = 512
+        # target_W = 512
+        target_H = 256
+        target_W = 256
+        target_D = 4
+        MAX_D = 0
+
+        D_list = list(range(4, 65, 4))
+        if len(vision_xs) == 1:
+            if vision_xs[0].shape[0] > 6:
+                D_list = list(range(4, 33, 4))
+
+        for ii in vision_xs:
+            try:
+                D = ii.shape[-1]
+                if D > MAX_D:
+                    MAX_D = D
+            except:
+                continue
+        for temp_D in D_list:
+            if abs(temp_D - MAX_D) < abs(target_D - MAX_D):
+                target_D = temp_D
+
+        if len(vision_xs) == 1 and target_D > 4:
+            target_H = 256
+            target_W = 256
+
+        vision_xs = [
+            torch.nn.functional.interpolate(s,
+                                            size=(target_H, target_W,
+                                                  target_D)) for s in vision_xs
+        ]
+
+        vision_xs = torch.nn.utils.rnn.pad_sequence(vision_xs,
+                                                    batch_first=True,
+                                                    padding_value=0)
+        # print('vision shapes: ')
+        # print(vision_xs.shape, vision_xs.dtype)
+        return dict(lang_x=lang_xs,
+                    vision_x=vision_xs,
+                    attention_mask=attention_masks,
+                    labels=labels,
+                    loss_reweight=loss_reweight,
+                    key_words_query=key_words_query)
+
+
+@dataclass
+class DataCollator(object):
+
+    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
+        #print(instances) 'loss_reweight': reweight_tensor, 'key_words_query': emphasize_words
+        vision_xs, lang_xs, attention_masks, labels, loss_reweight, key_words_query = tuple(
+            [instance[key] for instance in instances]
+            for key in ('vision_x', 'lang_x', 'attention_mask', 'labels',
+                        'loss_reweight', 'key_words_query'))
+
+        max_len = max([len(x_i) for x_i in lang_xs])
+
+        # print('lang_xs: ', lang_xs)
+
+        lang_xs = torch.cat([
+            torch.cat([lang_xi,
+                       torch.zeros(max_len - len(lang_xi)).long()
+                       ]).unsqueeze(0) for lang_xi in lang_xs
+        ],
+                            dim=0)
+        attention_masks = torch.cat([
+            torch.cat([am_i, torch.zeros(max_len - len(am_i)).long()
+                       ]).unsqueeze(0) for am_i in attention_masks
+        ],
+                                    dim=0)
+        labels = torch.cat([
+            torch.cat([label_i,
+                       torch.zeros(max_len - len(label_i)).long()
+                       ]).unsqueeze(0) for label_i in labels
+        ],
+                           dim=0)
+        loss_reweight = torch.cat([
+            torch.cat([lr_i, torch.zeros(max_len - len(lr_i))]).unsqueeze(0)
+            for lr_i in loss_reweight
+        ],
                                   dim=0)
         # print('lang shapes: ')
         # print(lang_xs.shape, attention_masks.shape, labels.shape,
@@ -178,6 +276,9 @@ def main():
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
                                       max_seq=1280,
                                       split='validation')
+
+    global tokenizer
+    tokenizer = Eval_dataset.text_tokenizer
 
     print('*' * 100)
 
@@ -286,13 +387,13 @@ def main():
         {
             "params": lora_params,
             "lr": 1e-4,
-            "weight_decay": 1e-6,
+            "weight_decay": 1e-4,
             # "initial_lr": 1e-6,
         },
         {
             "params": finetune_params,
             "weight_decay": 1e-4,
-            "lr": 3e-5,
+            "lr": 7e-5,
         }
     ]
 

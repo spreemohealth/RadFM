@@ -433,11 +433,13 @@ class multi_dataset(Dataset):
 
         ### make lang_x ###
         self.text_tokenizer.padding_side = "right"
-        text_tensor = self.text_tokenizer(question + ' ' + answer,
-                                          max_length=self.max_seq,
-                                          truncation=True,
-                                          padding=True,
-                                          return_tensors="pt")
+        text_tensor = self.text_tokenizer(
+            question + ' ' + answer,
+            max_length=self.max_seq,
+            truncation=True,
+            padding=True,
+            #   padding='max_length',
+            return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
         try:
@@ -459,11 +461,13 @@ class multi_dataset(Dataset):
         #     key_embeddings = []
         key_embeddings = []
 
-        question_tensor = self.text_tokenizer(question,
-                                              max_length=self.max_seq,
-                                              truncation=True,
-                                              padding="max_length",
-                                              return_tensors="pt")
+        question_tensor = self.text_tokenizer(
+            question,
+            max_length=self.max_seq,
+            truncation=True,
+            padding=True,
+            # padding='max_length',
+            return_tensors="pt")
         question_length = torch.sum(question_tensor["attention_mask"][0])
         labels = lang_x.clone()
         labels[labels == self.text_tokenizer.pad_token_id] = -100

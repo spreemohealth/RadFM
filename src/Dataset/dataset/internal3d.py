@@ -130,10 +130,9 @@ class DfForDlDataset(Dataset):
             choice = np.random.choice([1, 2, 3])
 
         fred_daphne_row = self.fred_daphne_df[self.fred_daphne_df.study_id ==
-                                              row['study_id']].iloc[0]
+                                              row['study_id']]
 
-        sep_qa_row = self.sep_qa_df[self.sep_qa_df.ID ==
-                                    row['study_id']].iloc[0]
+        sep_qa_row = self.sep_qa_df[self.sep_qa_df.ID == row['study_id']]
 
         if choice == 1:
             question = "Describe the findings from the medical images you are provided with."
@@ -146,10 +145,14 @@ class DfForDlDataset(Dataset):
                 answer = fred_daphne_row['findings']
 
         elif choice == 2:
+            if len(fred_daphne_row) > 0:
+                fred_daphne_row = fred_daphne_row.iloc[0]
+            else:
+                return self.get_qa(row, choice=1)
             if len(fred_daphne_row["findings_segments"]) > 0:
                 topic = np.random.choice(
                     list(fred_daphne_row["findings_segments"].keys()))
-                question = f"What are the findings for {topic} from the given study?"
+                question = f"What are the findings for {topic.lower().replace(':', '')} from the given study?"
                 answer = fred_daphne_row["findings_segments"][topic]
             elif len(fred_daphne_row["rawtext_segments"]) > 0:
 
@@ -172,9 +175,12 @@ class DfForDlDataset(Dataset):
                     if f == 0:
                         useful_topics.append(topic)
 
+                if len(useful_topics) == 0:
+                    return self.get_qa(row, choice=1)
+
                 topic = np.random.choice(useful_topics)
 
-                question = f"What are the findings for {topic} from the given study?"
+                question = f"What are the findings for {topic.lower().replace(':', '')} from the given study?"
                 answer = fred_daphne_row["rawtext_segments"][topic]
             else:
                 return self.get_qa(row, choice=1)
@@ -183,10 +189,19 @@ class DfForDlDataset(Dataset):
             if len(sep_qa_row) == 0:
                 return self.get_qa(row, choice=2)
             else:
+                sep_qa_row = sep_qa_row.iloc[0]
                 pathology = np.random.choice(list(sep_qa_row['sep_qa'].keys()))
-                question = sep_qa_row['sep_qa'][pathology]['findings'][
-                    'question']
-                answer = sep_qa_row['sep_qa'][pathology]['findings']['answer']
+                # if np.random.random < 0.3:
+                #     question = sep_qa_row['sep_qa'][pathology]['findings'][
+                #         'question']
+                #     answer = sep_qa_row['sep_qa'][pathology]['findings'][
+                #         'answer']
+                # else:
+                question = sep_qa_row['sep_qa'][pathology]['severity'][
+                    'question'] + ". Explain why?"
+                answer = sep_qa_row['sep_qa'][pathology]['findings'][
+                    'answer'] + ". " + sep_qa_row['sep_qa'][pathology][
+                        'severity']['answer']
 
         return question, answer
 
