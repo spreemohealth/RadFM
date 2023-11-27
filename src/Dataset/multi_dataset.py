@@ -481,6 +481,8 @@ class multi_dataset(Dataset):
         return {
             'vision_x': vision_x,
             'lang_x': lang_x,
+            'question': question,
+            'answer': answer,
             'attention_mask': attention_mask,
             'labels': labels,
             'loss_reweight': reweight_tensor,
