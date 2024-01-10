@@ -137,10 +137,15 @@ class MultiLLaMAForCausalLM(nn.Module):
         #    self.embedding_layer.flag = 'Seg'
         #    input_embedding = self.embedding_layer(lang_x, vision_x)
 
-    def generate(self, lang_x, vision_x):
+    def generate(self, lang_x, vision_x, generation_config=None):
         self.embedding_layer.flag = 'Text'
         with torch.no_grad():
-            input_embedding, _ = self.embedding_layer(lang_x, vision_x)
+            input_embedding, _ = self.embedding_layer(lang_x, vision_x, )
             generation = self.lang_model.generate(
-                inputs_embeds=input_embedding, max_new_tokens=200, top_k=50)
+                inputs_embeds=input_embedding, 
+                generation_config=generation_config)
+            
+#             generation = self.lang_model.generate(
+#                 inputs_embeds=input_embedding, max_new_tokens=200, top_k=50)
         return generation
+

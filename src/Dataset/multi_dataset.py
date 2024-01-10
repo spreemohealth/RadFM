@@ -433,13 +433,19 @@ class multi_dataset(Dataset):
 
         ### make lang_x ###
         self.text_tokenizer.padding_side = "right"
-        text_tensor = self.text_tokenizer(
-            question + ' ' + answer,
-            max_length=self.max_seq,
-            truncation=True,
-            padding=True,
-            #   padding='max_length',
-            return_tensors="pt")
+        if self.mode == 'eval':
+            text_tensor = self.text_tokenizer(question,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              # padding="max_length",
+                                              return_tensors="pt")
+        else:
+            text_tensor = self.text_tokenizer(question + ' ' + answer,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              padding=True,
+                                              # padding="max_length",
+                                              return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
         try:
@@ -479,6 +485,7 @@ class multi_dataset(Dataset):
         emphasize_words = []
         # print(labels,key_embeddings,reweight_tensor)
         return {
+            'study_id': sample['study_id'],
             'vision_x': vision_x,
             'lang_x': lang_x,
             'question': question,
@@ -544,11 +551,13 @@ class MultidatasetBigrad(multi_dataset):
     def __init__(self,
                  text_tokenizer,
                  split='train',
+                 mode='train',
                  max_seq=2048,
                  max_img_size=10,
                  image_num=32,
                  voc_size=32000):
 
+        self.mode = mode
         self.text_tokenizer = text_tokenizer
         self.max_img_size = max_img_size
         self.image_num = image_num

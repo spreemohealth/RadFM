@@ -85,6 +85,7 @@ class DfForDlDataset(Dataset):
         print('split: ', split, self.df.shape)
 
         self.sep_qa_df = pd.read_pickle(sep_qa_path)
+        # self.df = self.df[self.df.study_id.isin(self.sep_qa_df.study_id.unique())]
 
         self.fred_daphne_df = pd.read_pickle(fred_daphne_path)
         self.fred_daphne_df['findings'] = self.fred_daphne_df[
@@ -124,7 +125,7 @@ class DfForDlDataset(Dataset):
 
         return img
 
-    def get_qa(self, row, choice=None):
+    def get_qa(self, row, choice=1):
 
         if choice is None:
             choice = np.random.choice([1, 2, 3])
@@ -134,6 +135,7 @@ class DfForDlDataset(Dataset):
 
         sep_qa_row = self.sep_qa_df[self.sep_qa_df.ID == row['study_id']]
 
+        
         if choice == 1:
             question = "Describe the findings from the medical images you are provided with."
 
@@ -183,11 +185,11 @@ class DfForDlDataset(Dataset):
                 question = f"What are the findings for {topic.lower().replace(':', '')} from the given study?"
                 answer = fred_daphne_row["rawtext_segments"][topic]
             else:
-                return self.get_qa(row, choice=1)
+                return None #self.get_qa(row, choice=1)
 
         elif choice == 3:
             if len(sep_qa_row) == 0:
-                return self.get_qa(row, choice=2)
+                return None #self.get_qa(row, choice=2)
             else:
                 sep_qa_row = sep_qa_row.iloc[0]
                 pathology = np.random.choice(list(sep_qa_row['sep_qa'].keys()))
@@ -219,7 +221,9 @@ class DfForDlDataset(Dataset):
 
         image_dict = []
 
-        question, answer = self.get_qa(row)
+        qa_out = self.get_qa(row)
+        
+        question, answer = qa_out if qa_out else (None, None)
 
         mhds_to_use = []
         corpd = False
@@ -256,13 +260,14 @@ class DfForDlDataset(Dataset):
                         torch.from_numpy(image).unsqueeze(0).repeat(
                             3, 1, 1, 1),
                         "position": {
-                            "question": len(question)
+                            "question": len(question) if question is not None else 1
                         }
                     })
 
         # print(image_dict)
 
         return {
+            "study_id": row['study_id'],
             "image_dict": image_dict,
             "question": question,
             "answer": answer,
