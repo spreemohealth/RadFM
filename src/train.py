@@ -86,6 +86,8 @@ class ModelArguments:
     tokenizer_path: str = field(
         default="/mnt/team_blackhole/kawshik/Language_files/",
         metadata={"help": "Path to the tokenizer data."})
+    model_ckpt_load_dir: str = field(
+        default='/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin')
 
 
 @dataclass
@@ -306,8 +308,7 @@ def main():
     print("Load pretrained ckpt ")
 
     ckpt = torch.load(
-        '/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin',
-        map_location='cpu'
+        model_args.model_ckpt_load_dir, map_location='cpu'
     )  # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
 
     model.load_state_dict(ckpt, strict=False)
@@ -351,16 +352,28 @@ def main():
 
     total = 0
 
+    # param_groups_to_train = ['lora', 'embedding_layer']
+    param_groups_to_train = ['lora']
+
     lora_params = []
     finetune_params = []
     for n, p in model.named_parameters():
         if "lora" in n or "embedding_layer" in n:
             if "lora" in n:
                 lora_params.append(p)
+                if "lora" in param_groups_to_train:
+                    p.requires_grad = True
+                    total += p.numel()
+                else:
+                    p.requires_grad = False
             else:
                 finetune_params.append(p)
-            p.requires_grad = True
-            total += p.numel()
+                if "embedding_layer" in param_groups_to_train:
+                    p.requires_grad = True
+                    total += p.numel()
+                else:
+                    p.requires_grad = False
+
         else:
             p.requires_grad = False
 
@@ -383,19 +396,20 @@ def main():
 
     # print('*' * 100)
 
-    optimizer_grouped_parameters = [
-        {
+    optimizer_grouped_parameters = []
+    if "lora" in param_groups_to_train:
+        optimizer_grouped_parameters.append({
             "params": lora_params,
-            "lr": 1e-4,
+            "lr": 2e-4,
             "weight_decay": 1e-4,
-            # "initial_lr": 1e-6,
-        },
-        {
+        })
+
+    if "embedding_layer" in param_groups_to_train:
+        optimizer_grouped_parameters.append({
             "params": finetune_params,
-            "weight_decay": 1e-4,
-            "lr": 7e-5,
-        }
-    ]
+            "weight_decay": 5e-5,
+            "lr": 5e-5,
+        })
 
     optimizer = transformers.AdamW(params=optimizer_grouped_parameters)
 

@@ -127,7 +127,7 @@ class DfForDlDataset(Dataset):
     def get_qa(self, row, choice=None):
 
         if choice is None:
-            choice = np.random.choice([1, 2, 3])
+            choice = np.random.choice([1, 2, 3, 4])
 
         fred_daphne_row = self.fred_daphne_df[self.fred_daphne_df.study_id ==
                                               row['study_id']]
@@ -185,23 +185,23 @@ class DfForDlDataset(Dataset):
             else:
                 return self.get_qa(row, choice=1)
 
-        elif choice == 3:
+        elif choice == 3 or choice == 4:
             if len(sep_qa_row) == 0:
                 return self.get_qa(row, choice=2)
             else:
                 sep_qa_row = sep_qa_row.iloc[0]
                 pathology = np.random.choice(list(sep_qa_row['sep_qa'].keys()))
-                # if np.random.random < 0.3:
-                #     question = sep_qa_row['sep_qa'][pathology]['findings'][
-                #         'question']
-                #     answer = sep_qa_row['sep_qa'][pathology]['findings'][
-                #         'answer']
-                # else:
-                question = sep_qa_row['sep_qa'][pathology]['severity'][
-                    'question'] + ". Explain why?"
-                answer = sep_qa_row['sep_qa'][pathology]['findings'][
-                    'answer'] + ". " + sep_qa_row['sep_qa'][pathology][
-                        'severity']['answer']
+
+                if choice == 3:
+                    question = sep_qa_row['sep_qa'][pathology]['findings'][
+                        'question']
+                    answer = sep_qa_row['sep_qa'][pathology]['findings'][
+                        'answer']
+                elif choice == 4:
+                    question = sep_qa_row['sep_qa'][pathology]['severity'][
+                        'question']
+                    answer = sep_qa_row['sep_qa'][pathology]['severity'][
+                        'answer']
 
         return question, answer
 
