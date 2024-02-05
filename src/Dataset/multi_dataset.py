@@ -19,7 +19,8 @@ from spacy.tokens import Span
 from scispacy.abbreviation import AbbreviationDetector
 from scispacy.umls_linking import UmlsEntityLinker
 from Dataset.dataset.bigrad import BigRadDataset
-from Dataset.dataset.internal3d import Internal3DDataset, DfForDlDataset
+from Dataset.dataset.internal3d import Internal3DDataset, DfForDlDataset, All_Combi_Dataset
+
 
 
 class umls_extractor:
@@ -433,13 +434,19 @@ class multi_dataset(Dataset):
 
         ### make lang_x ###
         self.text_tokenizer.padding_side = "right"
-        text_tensor = self.text_tokenizer(
-            question + ' ' + answer,
-            max_length=self.max_seq,
-            truncation=True,
-            padding=True,
-            #   padding='max_length',
-            return_tensors="pt")
+        if self.mode == 'eval':
+            text_tensor = self.text_tokenizer(question,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              # padding="max_length",
+                                              return_tensors="pt")
+        else:
+            text_tensor = self.text_tokenizer(question + ' ' + answer,
+                                              max_length=self.max_seq,
+                                              truncation=True,
+                                              padding=True,
+                                              # padding="max_length",
+                                              return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
         try:
@@ -479,6 +486,9 @@ class multi_dataset(Dataset):
         emphasize_words = []
         # print(labels,key_embeddings,reweight_tensor)
         return {
+            'study_id': sample['study_id'],
+            'pathology': sample['pathology'],
+            'qtype': sample['qtype'],
             'vision_x': vision_x,
             'lang_x': lang_x,
             'question': question,
@@ -544,11 +554,15 @@ class MultidatasetBigrad(multi_dataset):
     def __init__(self,
                  text_tokenizer,
                  split='train',
+                 mode='train',
                  max_seq=2048,
                  max_img_size=10,
                  image_num=32,
-                 voc_size=32000):
+                 voc_size=32000,
+                 dataset_base=None,
+                 pathology_choice=None):
 
+        self.mode = mode
         self.text_tokenizer = text_tokenizer
         self.max_img_size = max_img_size
         self.image_num = image_num
@@ -594,13 +608,11 @@ class MultidatasetBigrad(multi_dataset):
         #         print('radnet_dataset loaded')
         #         # print(self.data_whole_2D)
         #         self.data_whole = self.data_whole_2D
+        
+        
 
-        image_df_path = "/mnt/team_blackhole/kawshik/df_for_dl_no_crop.pkl"
-        sep_qa_path = "/mnt/team_blackhole/kawshik/seq_qa.pkl"
-        report_qa_path = "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections_and_segments_v2.pkl"
-
-        internal_dataset = DfForDlDataset(image_df_path, sep_qa_path,
-                                          report_qa_path, split)  #, path_crop)
+        internal_dataset = dataset_base #split=split)
+          #, path_crop)
 
         # Internal3DDataset(
         #     path)  #basepath+'multimodal_base_df_internal_60k.pkl')

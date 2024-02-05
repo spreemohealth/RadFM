@@ -17,6 +17,8 @@ from peft import LoraConfig, get_peft_model
 from peft import prepare_model_for_kbit_training
 from transformers import LlamaTokenizer
 import evaluate
+from functools import partial
+from Dataset.dataset.internal3d import Internal3DDataset, DfForDlDataset, All_Combi_Dataset
 
 rouge_score = evaluate.load("rouge")
 
@@ -273,10 +275,30 @@ def main():
     training_args.data_sampler = My_DistributedBatchSampler
 
     print("Setup Data")
+    
+    all_combi_df_path = "/mnt/team_s3_synced/kawshik/knee_15k_all_combinations_QA.pkl"
+    # qtype = 'pathology_severity'
+    
+    internal_dataset = partial(All_Combi_Dataset,
+                               all_combi_df_path=all_combi_df_path)
+    
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, max_seq=1280, split='train')
+        text_tokenizer=model_args.tokenizer_path, 
+        max_seq=1280, 
+        dataset_base = All_Combi_Dataset(all_combi_df_path, 'train'),
+        split='train')
+    
+    for i in Train_dataset:
+        
+        print(i['question'])
+        print(i['lang_x'])
+        print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
+        
+        print('*'*50)
+    
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
                                       max_seq=1280,
+                                      dataset_base = All_Combi_Dataset(all_combi_df_path, 'validation'),
                                       split='validation')
 
     global tokenizer
