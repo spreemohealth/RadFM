@@ -22,7 +22,6 @@ from Dataset.dataset.bigrad import BigRadDataset
 from Dataset.dataset.internal3d import Internal3DDataset, DfForDlDataset, All_Combi_Dataset
 
 
-
 class umls_extractor:
 
     def __init__(self):
@@ -433,20 +432,24 @@ class multi_dataset(Dataset):
         #print(vision_x.shape,question,answer)
 
         ### make lang_x ###
-        self.text_tokenizer.padding_side = "right"
+
         if self.mode == 'eval':
-            text_tensor = self.text_tokenizer(question,
-                                              max_length=self.max_seq,
-                                              truncation=True,
-                                              # padding="max_length",
-                                              return_tensors="pt")
+            self.text_tokenizer.padding_side = "left"
+            text_tensor = self.text_tokenizer(
+                question,
+                max_length=self.max_seq,
+                truncation=True,
+                # padding="max_length",
+                return_tensors="pt")
         else:
-            text_tensor = self.text_tokenizer(question + ' ' + answer,
-                                              max_length=self.max_seq,
-                                              truncation=True,
-                                              padding=True,
-                                              # padding="max_length",
-                                              return_tensors="pt")
+            self.text_tokenizer.padding_side = "right"
+            text_tensor = self.text_tokenizer(
+                question + ' ' + answer,
+                max_length=self.max_seq,
+                truncation=True,
+                padding=True,
+                # padding="max_length",
+                return_tensors="pt")
         lang_x = text_tensor["input_ids"][0]
         attention_mask = text_tensor["attention_mask"][0]
         try:
@@ -608,11 +611,9 @@ class MultidatasetBigrad(multi_dataset):
         #         print('radnet_dataset loaded')
         #         # print(self.data_whole_2D)
         #         self.data_whole = self.data_whole_2D
-        
-        
 
-        internal_dataset = dataset_base #split=split)
-          #, path_crop)
+        internal_dataset = dataset_base  #split=split)
+        #, path_crop)
 
         # Internal3DDataset(
         #     path)  #basepath+'multimodal_base_df_internal_60k.pkl')

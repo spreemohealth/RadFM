@@ -89,12 +89,15 @@ class ModelArguments:
         default="/mnt/team_blackhole/kawshik/Language_files/",
         metadata={"help": "Path to the tokenizer data."})
     model_ckpt_load_dir: str = field(
-        default='/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin')
+        default='/mnt/team_s3_synced/msandora/RadFM/pytorch_model.bin'),
+    param_groups_to_train: str = field(default='[lora]')
 
 
 @dataclass
 class DataArguments:
     Mode: Optional[str] = field(default="Train")
+    qtype: Optional[str] = field(default=None)
+    max_seq: Optional[int] = field(default=1280)
 
 
 @dataclass
@@ -104,6 +107,7 @@ class TrainingArguments(transformers.TrainingArguments):
     batch_size_3D: int = field(default=4)
     output_dir: Optional[str] = field(default="./Results/BLIP_overfit/")
     cache_dir: Optional[str] = field(default=None)
+    lr: str = field(default="[2e-4,5e-5]")
     optim: str = field(default="adamw_torch")
 
 
@@ -275,30 +279,32 @@ def main():
     training_args.data_sampler = My_DistributedBatchSampler
 
     print("Setup Data")
-    
-    all_combi_df_path = "/mnt/team_s3_synced/kawshik/knee_15k_all_combinations_QA.pkl"
-    # qtype = 'pathology_severity'
-    
+
+    all_combi_df_path = "/mnt/team_s3_synced/kawshik/knee_15k_all_combinations_QA_v1.pkl"
+
     internal_dataset = partial(All_Combi_Dataset,
-                               all_combi_df_path=all_combi_df_path)
-    
+                               all_combi_df_path=all_combi_df_path,
+                               qtype=data_args.qtype)
+
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, 
-        max_seq=1280, 
-        dataset_base = All_Combi_Dataset(all_combi_df_path, 'train'),
+        text_tokenizer=model_args.tokenizer_path,
+        max_seq=data_args.max_seq,
+        dataset_base=All_Combi_Dataset(all_combi_df_path, 'train'),
         split='train')
-    
+
     for i in Train_dataset:
-        
+
         print(i['question'])
         print(i['lang_x'])
         print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
-        
-        print('*'*50)
-    
+
+        print('*' * 50)
+        break
+
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1280,
-                                      dataset_base = All_Combi_Dataset(all_combi_df_path, 'validation'),
+                                      max_seq=data_args.max_seq,
+                                      dataset_base=All_Combi_Dataset(
+                                          all_combi_df_path, 'validation'),
                                       split='validation')
 
     global tokenizer
@@ -375,7 +381,8 @@ def main():
     total = 0
 
     # param_groups_to_train = ['lora', 'embedding_layer']
-    param_groups_to_train = ['lora']
+
+    param_groups_to_train = eval(model_args.param_groups_to_train)
 
     lora_params = []
     finetune_params = []
@@ -416,21 +423,25 @@ def main():
     #                                        16, 256).to('cuda'))
     # print(tin.shape, tout.shape)
 
-    # print('*' * 100)
+    print('*' * 100)
+    print(type(training_args.lr), type(eval(training_args.lr)))
+    print('*' * 100)
+
+    lrs = eval(training_args.lr)
 
     optimizer_grouped_parameters = []
     if "lora" in param_groups_to_train:
         optimizer_grouped_parameters.append({
             "params": lora_params,
-            "lr": 2e-4,
+            "lr": lrs[0],
             "weight_decay": 1e-4,
         })
 
     if "embedding_layer" in param_groups_to_train:
         optimizer_grouped_parameters.append({
             "params": finetune_params,
+            "lr": lrs[1],
             "weight_decay": 5e-5,
-            "lr": 5e-5,
         })
 
     optimizer = transformers.AdamW(params=optimizer_grouped_parameters)

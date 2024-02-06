@@ -75,34 +75,40 @@ def metadata_as_dict(mhd):
         }
     return metadata
 
+
 class All_Combi_Dataset(Dataset):
-    
-    def __init__(self, all_combi_df_path, split=None, qtype=None, sample_num=None):
-        
-        print('split: ',split)
-        
+
+    def __init__(self,
+                 all_combi_df_path,
+                 split=None,
+                 qtype=None,
+                 sample_num=None):
+
+        print('split: ', split)
+
         self.df = pd.read_pickle(all_combi_df_path)
         self.df = self.df[self.df.split.str.contains(split)]
-        if qtype is not None: 
+        if qtype is not None:
             self.df = self.df[self.df.qtype == qtype]
         print('split: ', split, self.df.shape)
-        
+
         if sample_num is not None:
             sampled_rows = []
             for pathology in self.df.pathology.unique():
-                sample = self.df[self.df.pathology==pathology].groupby('answer').apply(lambda x: x.sample(100, random_state=8) if len(x) > 100 else x).reset_index(drop = True)
+                sample = self.df[self.df.pathology == pathology].groupby(
+                    'answer').apply(lambda x: x.sample(100, random_state=8) if
+                                    len(x) > 100 else x).reset_index(drop=True)
                 sampled_rows.append(sample)
-                
+
             self.df = pd.concat(sampled_rows)
-        
+
         self.df = self.df.sample(frac=1, random_state=8).reset_index(drop=True)
-        
+
         self.image_columns = [col for col in self.df.columns if 'x_' in col]
-        
+
         logging.info("loaded dataset")
 
         self.study_ids = list(self.df.study_id.unique())
-        
 
         self.transforms = [
             ReduceSliceResolution(target_mm_spacing=4.0),
@@ -111,10 +117,10 @@ class All_Combi_Dataset(Dataset):
             NormalizeIntensityVolume(),
             PadToSquare(value="minimum", size=256, keep_offset=True),
         ]
-        
+
     def __len__(self):
         return len(self.df)
-    
+
     def load_mhd(self, img_path):
 
         mhd = MhdHandler(img_path)
@@ -129,7 +135,7 @@ class All_Combi_Dataset(Dataset):
         img = (img - np.min(img)) / (np.max(img) - np.min(img))
 
         return img
-    
+
     def __getitem__(self, index):
 
         row = self.df.iloc[index]
@@ -142,9 +148,20 @@ class All_Combi_Dataset(Dataset):
         image_dict = []
 
         question = row['question']
+
+        prompt = f"Below is an instruction that describes a task, paired with an input that provides further context. \n\nWrite a response that appropriately completes the request.\n\n### Instruction:\n"
+
         answer = row['answer']
         pathology = row['pathology']
         qtype = row['qtype']
+        if qtype == 'pathology_severity':
+            image_position = len(question.split("\n\n")[0])
+        else:
+            image_position = len(question)
+
+        image_position += len(prompt)
+
+        question = prompt + question + "\n\n### Response:\n"
 
         mhds_to_use = []
         corpd = False
@@ -175,7 +192,7 @@ class All_Combi_Dataset(Dataset):
                         torch.from_numpy(image).unsqueeze(0).repeat(
                             3, 1, 1, 1),
                         "position": {
-                            "question": len(question)
+                            "question": image_position  #+1
                         }
                     })
 
@@ -187,12 +204,16 @@ class All_Combi_Dataset(Dataset):
             "qtype": qtype,
             "pathology": pathology
         }
-    
-    
+
 
 class DfForDlDataset(Dataset):
 
-    def __init__(self, nocrop_path, sep_qa_path, fred_daphne_path, split, pathology_choice=None):
+    def __init__(self,
+                 nocrop_path,
+                 sep_qa_path,
+                 fred_daphne_path,
+                 split,
+                 pathology_choice=None):
 
         self.df = pd.read_pickle(nocrop_path)
         self.df = self.df[self.df.split.str.contains(split)]
@@ -211,7 +232,7 @@ class DfForDlDataset(Dataset):
         logging.info("loaded dataset")
 
         self.study_ids = list(self.df.study_id.unique())
-        
+
         self.pathology_choice = pathology_choice
 
         self.transforms = [
@@ -308,7 +329,8 @@ class DfForDlDataset(Dataset):
                 sep_qa_row = sep_qa_row.iloc[0]
 
                 if self.pathology_choice is None:
-                    pathology = np.random.choice(list(sep_qa_row['sep_qa'].keys()))
+                    pathology = np.random.choice(
+                        list(sep_qa_row['sep_qa'].keys()))
                 else:
                     pathology = self.pathology_choice
 
@@ -476,7 +498,6 @@ class Internal3DDataset(Dataset):
                 image = self.load_mhd(mhd_path)
 
                 print(image.shape)
-            
 
                 image_dict.append({
                     "image":
@@ -494,7 +515,6 @@ class Internal3DDataset(Dataset):
         #     "answer": answer,
         # }
 
-        
         return {
             "study_id": row['study_id'],
             "image_dict": image_dict,
