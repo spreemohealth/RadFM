@@ -38,12 +38,12 @@ def transform_volume(volume, composed_transforms, **kwargs):
                         "Dimsize": np.zeros(3)}
            """
     # change to (Row, Col, Slice)
-    print(type(volume), volume.shape, volume.dtype)
+    # print(type(volume), volume.shape, volume.dtype)
     volume = np.transpose(volume, (1, 2, 0))
     # Augment/transform and change to torch type (Slice, Row, Col)
     # volume = composed_transforms(image=volume)['image'].type(torch.float)
     volume = composed_transforms(image=volume, **kwargs)['image']
-    print(type(volume), volume.shape, volume.dtype)
+    # print(type(volume), volume.shape, volume.dtype)
     volume = volume.astype(float)
 
     return volume
@@ -185,7 +185,7 @@ class All_Combi_Dataset(Dataset):
                 if mhd in image_path:
 
                     image = self.load_mhd(image_path)
-                    print(image.shape)
+                    # print(image.shape)
 
                     image_dict.append({
                         "image":
@@ -391,7 +391,7 @@ class DfForDlDataset(Dataset):
 
                     image = self.load_mhd(image_path)
 
-                    print(image.shape)
+                    # print(image.shape)
 
                     image_dict.append({
                         "image":
@@ -497,7 +497,7 @@ class Internal3DDataset(Dataset):
 
                 image = self.load_mhd(mhd_path)
 
-                print(image.shape)
+                # print(image.shape)
 
                 image_dict.append({
                     "image":

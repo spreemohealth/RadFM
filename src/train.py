@@ -98,6 +98,7 @@ class DataArguments:
     Mode: Optional[str] = field(default="Train")
     qtype: Optional[str] = field(default=None)
     max_seq: Optional[int] = field(default=1280)
+    val_sample_num: Optional[int] = field(default=None)
 
 
 @dataclass
@@ -282,29 +283,24 @@ def main():
 
     all_combi_df_path = "/mnt/team_s3_synced/kawshik/knee_15k_all_combinations_QA_v1.pkl"
 
-    internal_dataset = partial(All_Combi_Dataset,
-                               all_combi_df_path=all_combi_df_path,
-                               qtype=data_args.qtype)
-
     Train_dataset = MultidatasetBigrad(
         text_tokenizer=model_args.tokenizer_path,
         max_seq=data_args.max_seq,
-        dataset_base=All_Combi_Dataset(all_combi_df_path, 'train'),
+        dataset_base=All_Combi_Dataset(all_combi_df_path, split='train', qtype=data_args.qtype),
         split='train')
 
-    for i in Train_dataset:
+    # for i in Train_dataset:
 
-        print(i['question'])
-        print(i['lang_x'])
-        print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
+    #     print(i['question'])
+    #     print(i['lang_x'])
+    #     print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
 
-        print('*' * 50)
-        break
+    #     print('*' * 50)
+    #     break
 
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
                                       max_seq=data_args.max_seq,
-                                      dataset_base=All_Combi_Dataset(
-                                          all_combi_df_path, 'validation'),
+                                      dataset_base=All_Combi_Dataset(all_combi_df_path, split='validation', qtype=data_args.qtype, sample_num=data_args.val_sample_num),
                                       split='validation')
 
     global tokenizer

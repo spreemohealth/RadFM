@@ -45,7 +45,6 @@ spec:
                   "--qtype","pathology_severity",
                   "--param_groups_to_train","['lora']",
                   "--max_seq","256",
-                  "--val_sample_num","250",
                   "--model_ckpt_load_dir","/mnt/team_s3_synced/kawshik/radfm_ckpts/wo_lora/checkpoint-1000/pytorch_model.bin",
                   # "--per_device_train_batch_size","8",
                   # "--gradient_accumulation_steps","1024",
