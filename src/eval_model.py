@@ -20,6 +20,7 @@ import evaluate
 from functools import partial
 from Dataset.dataset.internal3d import Internal3DDataset, DfForDlDataset, All_Combi_Dataset
 
+
 def find_all_linear_names(model):
     cls = torch.nn.Linear
     lora_module_names = set()
@@ -53,7 +54,6 @@ class ModelArguments:
 class DataArguments:
     Mode: Optional[str] = field(default="Train")
 
-    
 
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
@@ -65,7 +65,9 @@ class TrainingArguments(transformers.TrainingArguments):
     optim: str = field(default="adamw_torch")
     pathology_choice: str = field(default=None)
 
+
 #dict_keys(['acl', 'cartilage - lateral compartment', 'cartilage - medial compartment', 'cartilage - patellofemoral compartment', 'extensor alignment', 'joint fluid', 'lcl', 'lateral meniscus', 'mcl', 'marrow/bone', 'medial meniscus', 'pcl', 'patellar tendon', 'popliteal cyst', 'quad tendon', 'synovium', 'intraarticular body'])
+
 
 @dataclass
 class DataCollator(object):
@@ -143,54 +145,57 @@ def main():
     print(training_args.pathology_choice)
 
     print("Setup Data")
-    
-#     image_df_path = "/mnt/team_blackhole/kawshik/df_for_dl_no_crop.pkl"
-#     sep_qa_path = "/mnt/team_blackhole/kawshik/seq_qa.pkl"
-#     report_qa_path = "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections_and_segments_v2.pkl"
 
-    # internal_dataset = partial(DfForDlDataset, 
-    #                            image_df_path=image_df_path, 
+    #     image_df_path = "/mnt/team_blackhole/kawshik/df_for_dl_no_crop.pkl"
+    #     sep_qa_path = "/mnt/team_blackhole/kawshik/seq_qa.pkl"
+    #     report_qa_path = "/mnt/team_blackhole/kawshik/60k_internal_data_reports_w_sections_and_segments_v2.pkl"
+
+    # internal_dataset = partial(DfForDlDataset,
+    #                            image_df_path=image_df_path,
     #                            sep_qa_path=sep_qa_path,
-    #                            report_qa_path=report_qa_path, 
+    #                            report_qa_path=report_qa_path,
     #                            pathology_choice=pathology_choice)
-    
+
     all_combi_df_path = "/mnt/team_s3_synced/kawshik/knee_15k_all_combinations_QA.pkl"
     qtype = 'pathology_severity'
     split = 'train'
     sample_num = 10
-    
-    # internal_dataset = 
-    
+
+    # internal_dataset =
+
     Train_dataset = MultidatasetBigrad(
-        text_tokenizer=model_args.tokenizer_path, 
-                       max_seq=1024, 
-                       split='train',
-                       mode = 'eval',
-                       dataset_base = All_Combi_Dataset(all_combi_df_path, 'train',qtype, sample_num=sample_num),
-                       pathology_choice = training_args.pathology_choice
-                        )
-    
+        text_tokenizer=model_args.tokenizer_path,
+        max_seq=1024,
+        split='train',
+        mode='eval',
+        dataset_base=All_Combi_Dataset(all_combi_df_path,
+                                       'train',
+                                       qtype,
+                                       sample_num=sample_num),
+        pathology_choice=training_args.pathology_choice)
+
     for i in Train_dataset:
-        
+
         print(i['question'])
         print(i['lang_x'])
         print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
-        print('*'*50)
-        
-    Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024,
-                                      split='validation',
-                                      mode = 'eval',
-                                      dataset_base = All_Combi_Dataset(all_combi_df_path, 'validation',qtype),
-                                      pathology_choice = training_args.pathology_choice
-                                     )
-    Test_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
-                                      max_seq=1024,
-                                      split='test',
-                                      mode = 'eval',
-                                      dataset_base = All_Combi_Dataset(all_combi_df_path, 'test', qtype),
-                                      pathology_choice = training_args.pathology_choice
-                                     )
+        print('*' * 50)
+
+    Eval_dataset = MultidatasetBigrad(
+        text_tokenizer=model_args.tokenizer_path,
+        max_seq=1024,
+        split='validation',
+        mode='eval',
+        dataset_base=All_Combi_Dataset(all_combi_df_path, 'validation', qtype),
+        pathology_choice=training_args.pathology_choice)
+
+    Test_dataset = MultidatasetBigrad(
+        text_tokenizer=model_args.tokenizer_path,
+        max_seq=1024,
+        split='test',
+        mode='eval',
+        dataset_base=All_Combi_Dataset(all_combi_df_path, 'test', qtype),
+        pathology_choice=training_args.pathology_choice)
 
     print('*' * 100)
 
@@ -217,10 +222,7 @@ def main():
 
     print("Load pretrained ckpt ")
 
-    
-
-#     print("add Lora adapters")
-
+    #     print("add Lora adapters")
 
     lora_r = 64
     lora_alpha = 16
@@ -248,11 +250,12 @@ def main():
     # self.lang_model.config.use_cache = False
 
     model.lang_model = get_peft_model(model.lang_model, lora_config)
-    
+
     ckpt = torch.load(
-        # '/mnt/team_s3_synced/kawshik/radfm_ckpts/severity/checkpoint-1034/pytorch_model.bin', # all finetune 
+        # '/mnt/team_s3_synced/kawshik/radfm_ckpts/severity/checkpoint-1034/pytorch_model.bin', # all finetune
         # "/mnt/team_s3_synced/kawshik/radfm_ckpts/wo_lora/checkpoint-950/pytorch_model.bin", # pretrain
-        "/mnt/team_s3_synced/kawshik/radfm_ckpts/after_pretrain_vision_perceiver_finetune/only_lora/b64_2e-4/checkpoint-3385/pytorch_model.bin", # finetune only lora
+        # "/mnt/team_s3_synced/kawshik/radfm_ckpts/finetune_lora_severity/only_lora/b64_2e-4/checkpoint-3385/pytorch_model.bin",  # finetune only lora
+        "/mnt/team_s3_synced/kawshik/radfm_ckpts/finetune_lora_severity/all_combinations_in_each_epoch/checkpoint-3104/pytorch_model.bin",  # finetune severity only lora - all combinations
         map_location='cpu'
     )  # Please dowloud our checkpoint from huggingface and Decompress the original zip file first
 
@@ -266,13 +269,12 @@ def main():
 
     # print('*' * 100, '\n', 'num_params:', total)
     print("Model Setup done")
-    
+
     model.to(torch.bfloat16)
     model = model.to('cuda')
-    model.eval() 
+    model.eval()
     # if bits == 16:
-        # if training_args.bf16:
-    
+    # if training_args.bf16:
 
     # print(model.lang_model)
     # tin = torch.rand(16, 256, 5120)
@@ -282,17 +284,17 @@ def main():
     # print(tin.shape, tout.shape)
 
     # print('*' * 100)
-    
+
     c_i = 0
-    
+
     #### 128 max len for task 3
-    
+
     config_type = 'beam_search'
     # config_type = 'topk'
     # config_type = 'contrastive_search' # 'beam_search'
-    
+
     count_num = 19245
-    
+
     penalty_alpha = 0
     top_k = 1
     num_beams = 1
@@ -304,72 +306,75 @@ def main():
         do_sample = False
     elif config_type == 'topk':
         do_sample = True
-        temperature=0.5
-        top_k=50
-        top_p=1.0
+        temperature = 0.5
+        top_k = 50
+        top_p = 1.0
     elif config_type == 'beam_search':
         num_beams = 5
         do_sample = False
     elif config_type == 'contrastive_search':
         penalty_alpha = 0.5
         top_k = 5
-    
+
     generation_config = GenerationConfig(
-                                     # max_new_tokens=1024,
-                                     max_new_tokens=32,
-                                     min_new_tokens=8,
-                                     num_beams=num_beams,
-                                     early_stopping=False,
-                                     use_cache=True,
-                                     do_sample=do_sample,
-                                     # do_sample=True,
-                                     penalty_alpha=penalty_alpha, 
-                                     # top_k=10,
-                                     temperature=temperature,
-                                     top_k=top_k,
-                                     # top_p=1.0,
-                                     repetition_penalty=1.1,
-                                     # repetition_penalty=1.0,
-                                     # temperature=0.5,
-                                     # penalty_alpha=0.6,
-                                     pad_token_id = 0,
-                                     bos_token_id = 1,
-                                     eos_token_id = 2,
-                                     # pad_token_id=0,
-                                     )
-    
+        # max_new_tokens=1024,
+        max_new_tokens=32,
+        min_new_tokens=8,
+        num_beams=num_beams,
+        early_stopping=False,
+        use_cache=True,
+        do_sample=do_sample,
+        # do_sample=True,
+        penalty_alpha=penalty_alpha,
+        # top_k=10,
+        temperature=temperature,
+        top_k=top_k,
+        # top_p=1.0,
+        repetition_penalty=1.1,
+        # repetition_penalty=1.0,
+        # temperature=0.5,
+        # penalty_alpha=0.6,
+        pad_token_id=0,
+        bos_token_id=1,
+        eos_token_id=2,
+        # pad_token_id=0,
+    )
+
     rouge_score = evaluate.load("rouge")
-    
+
     outs = []
-    
+
     if split == 'test':
         dataset_to_use = Test_dataset
     elif split == 'validation':
         dataset_to_use = Eval_dataset
     else:
         dataset_to_use = Train_dataset
-        
+
     for instance in tqdm.tqdm(dataset_to_use):
         if instance is None:
             continue
-            
+
         study_id = instance['study_id']
         vision_x = instance['vision_x']
         vision_x = torch.nn.functional.interpolate(vision_x,
-                                            size=(256,256,24)).to(torch.bfloat16)
-        
+                                                   size=(256, 256, 24)).to(
+                                                       torch.bfloat16)
+
         lang_x = instance['lang_x']
         attention_mask = instance['attention_mask']
         # print(vision_x.shape, lang_x.shape, attention_mask.shape)
-             
+
         with torch.no_grad():
-            generation = model.generate(lang_x.unsqueeze(0).to('cuda'),
-                                        vision_x.unsqueeze(0).to('cuda'), 
-                                        generation_config = generation_config).squeeze(0)
+            generation = model.generate(
+                lang_x.unsqueeze(0).to('cuda'),
+                vision_x.unsqueeze(0).to('cuda'),
+                generation_config=generation_config).squeeze(0)
             # print('generation: ', generation)
-            
-        generated_texts = Test_dataset.text_tokenizer.decode(generation).strip()
-        
+
+        generated_texts = Test_dataset.text_tokenizer.decode(
+            generation).strip()
+
         # print('*'*100)
         # print('question: ', instance['question'])
         # print('-'*25)
@@ -377,39 +382,39 @@ def main():
         # print('-'*25)
         # print('prediction: ', generated_texts)
         # print('*'*100)
-        
-        result = rouge_score.compute(
-        predictions=[generated_texts], references=[instance['answer']], use_stemmer=True
-        )
+
+        result = rouge_score.compute(predictions=[generated_texts],
+                                     references=[instance['answer']],
+                                     use_stemmer=True)
         # print(result)
         # print('*'*100)
 
         # print(ACCs)
         result = {key: value for key, value in result.items()}
         # print(result)
-#         print('*'*100)
-        
-        base_dict = {"study_id":study_id, 
-                     "question": instance['question'],
-                     "answer": instance['answer'],
-                     "pred": generated_texts,
-                     "qtype" : instance["qtype"],
-                     "pathology" : instance["pathology"],
-                    }
-        
+        #         print('*'*100)
+
+        base_dict = {
+            "study_id": study_id,
+            "question": instance['question'],
+            "answer": instance['answer'],
+            "pred": generated_texts,
+            "qtype": instance["qtype"],
+            "pathology": instance["pathology"],
+        }
+
         # print(base_dict)
         base_dict.update(result)
         # print(base_dict)
         outs.append(base_dict)
-        
-        
+
         # input("enter to continue")
-        
+
         c_i += 1
-        
+
         if c_i > count_num:
             break
-        
+
         # {
         #     'vision_x': vision_x,
         #     'lang_x': lang_x,
@@ -418,14 +423,18 @@ def main():
         #     'loss_reweight': reweight_tensor,
         #     'key_words_query': emphasize_words
         # }
-        
-    import pandas as pd 
+
+    import pandas as pd
     outs = pd.DataFrame(outs)
     for key in result:
-        print(key, np.mean(outs[key].tolist()), np.std(outs[key].tolist()), np.min(outs[key].tolist()), np.max(outs[key].tolist()))
-        
+        print(key, np.mean(outs[key].tolist()), np.std(outs[key].tolist()),
+              np.min(outs[key].tolist()), np.max(outs[key].tolist()))
+
     # outs.to_pickle(f"sample_outputs_report_findings_{config_type}_{count_num}{'_pathology-' + training_args.pathology_choice if training_args.pathology_choice is not None else ''}.pkl")
-    outs.to_pickle(f"all_outputs_{split + '-' + str(sample_num) if sample_num is not None else split}_report_findings_{config_type}_{count_num}{'_pathology-' + training_args.pathology_choice if training_args.pathology_choice is not None else ''}.pkl")
+    outs.to_pickle(
+        f"all_outputs_{split + '-' + str(sample_num) if sample_num is not None else split}_report_findings_{config_type}_{count_num}{'_pathology-' + training_args.pathology_choice if training_args.pathology_choice is not None else ''}.pkl"
+    )
+
 
 if __name__ == "__main__":
     main()

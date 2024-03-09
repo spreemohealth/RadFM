@@ -96,8 +96,8 @@ class All_Combi_Dataset(Dataset):
             sampled_rows = []
             for pathology in self.df.pathology.unique():
                 sample = self.df[self.df.pathology == pathology].groupby(
-                    'answer').apply(lambda x: x.sample(100, random_state=8) if
-                                    len(x) > 100 else x).reset_index(drop=True)
+                    'answer').apply(lambda x: x.sample(sample_num, random_state=8) if
+                                    len(x) > sample_num else x).reset_index(drop=True)
                 sampled_rows.append(sample)
 
             self.df = pd.concat(sampled_rows)
@@ -117,6 +117,8 @@ class All_Combi_Dataset(Dataset):
             NormalizeIntensityVolume(),
             PadToSquare(value="minimum", size=256, keep_offset=True),
         ]
+
+        self.report_prompts = pd.read_json("./Dataset/dataset/report_prompt.json")
 
     def __len__(self):
         return len(self.df)
@@ -147,9 +149,15 @@ class All_Combi_Dataset(Dataset):
 
         image_dict = []
 
-        question = row['question']
+        if row['qtype']=='findings':
+            question = self.report_prompts.sample().iloc[0]['caption_prompt']
+            prompt = ""
+            end_prompt = ""
+        else:
+            question = row['question']
 
-        prompt = f"Below is an instruction that describes a task, paired with an input that provides further context. \n\nWrite a response that appropriately completes the request.\n\n### Instruction:\n"
+            prompt = f"Below is an instruction that describes a task, paired with an input that provides further context. \n\nWrite a response that appropriately completes the request.\n\n### Instruction:\n"
+            end_prompt = "\n\n### Response:\n"
 
         answer = row['answer']
         pathology = row['pathology']
@@ -161,7 +169,7 @@ class All_Combi_Dataset(Dataset):
 
         image_position += len(prompt)
 
-        question = prompt + question + "\n\n### Response:\n"
+        question = prompt + question + end_prompt
 
         mhds_to_use = []
         corpd = False

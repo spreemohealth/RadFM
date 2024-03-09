@@ -11,8 +11,12 @@ from Model.RadFM.multimodality_model import MultiLLaMAForCausalLM
 from datasampler import My_DistributedBatchSampler
 from datasets import load_metric
 from Dataset.multi_dataset_test_for_close import multi_dataset_close
+
 import numpy as np
 import torch
+
+# torch.set_num_threads(20)
+
 from peft import LoraConfig, get_peft_model
 from peft import prepare_model_for_kbit_training
 from transformers import LlamaTokenizer
@@ -289,14 +293,14 @@ def main():
         dataset_base=All_Combi_Dataset(all_combi_df_path, split='train', qtype=data_args.qtype),
         split='train')
 
-    # for i in Train_dataset:
+    for i in Train_dataset:
 
-    #     print(i['question'])
-    #     print(i['lang_x'])
-    #     print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
+        print(i['question'])
+        print(i['lang_x'])
+        print(Train_dataset.text_tokenizer.convert_ids_to_tokens(i['lang_x']))
 
-    #     print('*' * 50)
-    #     break
+        print('*' * 50)
+        break
 
     Eval_dataset = MultidatasetBigrad(text_tokenizer=model_args.tokenizer_path,
                                       max_seq=data_args.max_seq,
@@ -308,18 +312,18 @@ def main():
 
     print('*' * 100)
 
-    import time
-    start = time.time()
-    for b_i, b in enumerate(Train_dataset):
-        #         if b_i%100==0:
-        #             print(b_i/len(Train_dataset))
+    # import time
+    # start = time.time()
+    # for b_i, b in enumerate(Train_dataset):
+    #     #         if b_i%100==0:
+    #     #             print(b_i/len(Train_dataset))
 
-        #             print('time: ',(time.time() - start) / (b_i+1))
-        for key in b:
+    #     #             print('time: ',(time.time() - start) / (b_i+1))
+    #     for key in b:
 
-            print(key, type(b[key]), (b[key].shape if str(type(
-                b[key])) == "<class 'torch.Tensor'>" else len(b[key])))
-        break
+    #         print(key, type(b[key]), (b[key].shape if str(type(
+    #             b[key])) == "<class 'torch.Tensor'>" else len(b[key])))
+    #     break
 
     print('*' * 100)
 
